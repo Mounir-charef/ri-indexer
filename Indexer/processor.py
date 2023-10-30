@@ -5,6 +5,7 @@ from nltk.probability import FreqDist
 import os
 from dataclasses import dataclass, field
 from typing import Dict
+import math
 
 
 class TextProcessor:
@@ -13,10 +14,16 @@ class TextProcessor:
         token: str = field(compare=True, repr=True)
         freq: Dict[int, int] = field(compare=False, repr=False)
         docs: [int] = field(default_factory=list, compare=False, repr=True)
+        weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=False)
 
     def __init__(self, docs: [str]):
         self.docs: [str] = docs
         self._tokens: [TextProcessor.Token] = []
+
+    def calculate_weight(self, token: Token):
+        for doc_number in token.docs:
+            max_freq = max([token.freq[doc_number] for token in self.tokens if doc_number in token.docs])
+            token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log(len(self.docs) / len(token.docs) + 1)
 
     @property
     def tokens(self):
@@ -90,11 +97,11 @@ class TextProcessor:
 
         tokens = self.get_tokens_by_doc(doc_number)
         with open(file_path, "a") as f:
-            for token in sorted(tokens, key=lambda x: x.freq[doc_number]):
+            for token in sorted(tokens, key=lambda x: x.token):
                 if file_type == "descriptor":
-                    f.write(f"{doc_number} {token.token} {token.freq[doc_number]} {token.docs}\n")
+                    f.write(f"{doc_number} {token.token} {token.freq[doc_number]} {token.weight[doc_number]:.4f} \n")
                 elif file_type == "inverse":
-                    f.write(f"{token.token} {doc_number} {token.freq[doc_number]}\n")
+                    f.write(f"{token.token} {doc_number} {token.freq[doc_number]} {token.freq[doc_number]} {token.weight[doc_number]:.4f}\n")
                 else:
                     raise Exception("Invalid type")
 
@@ -125,6 +132,9 @@ class TextProcessor:
                 text = f.read()
                 tokens = self.process_text(text, doc_number, tokenizer=tokenizer, stemmer=stemmer)
                 self.tokens = tokens
+
+        for token in self.tokens:
+            self.calculate_weight(token)
 
         for i in range(len(self.docs)):
             self.write_to_file(descriptor_file_path, i + 1)
