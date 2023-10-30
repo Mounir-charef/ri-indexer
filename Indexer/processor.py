@@ -8,6 +8,9 @@ from typing import Dict
 import math
 
 
+PATH_TEMPLATE = "results/{file_type}{tokenizer}_{stemmer}.txt"
+
+
 class TextProcessor:
     @dataclass(slots=True, order=True)
     class Token:
@@ -48,6 +51,9 @@ class TextProcessor:
 
     @tokens.setter
     def tokens(self, tokens: list[Token]):
+        self._tokens = tokens
+
+    def add_tokens(self, tokens: list[Token]):
         for token in tokens:
             if token in self._tokens:
                 self._tokens[self._tokens.index(token)].docs += token.docs
@@ -148,15 +154,16 @@ class TextProcessor:
             self.write_to_file(descriptor_file_path, i + 1)
             self.write_to_file(inverse_file_path, i + 1, file_type="inverse")
 
-    def __call__(self, tokenizer: str = "nltk", stemmer: str = "porter"):
+    def __call__(self, tokenizer: str = "split", stemmer: str = "lancaster"):
         self.tokenizer = tokenizer
         self.stemmer = stemmer
+        self._tokens = []
         for i, doc in enumerate(self.docs):
             doc_number = i + 1
             with open(doc, "r") as f:
                 text = f.read()
                 tokens = self.process_text(text, doc_number)
-                self.tokens = tokens
+                self.add_tokens(tokens)
 
         for token in self.tokens:
             self.calculate_weight(token)

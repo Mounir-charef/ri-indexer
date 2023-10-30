@@ -1,51 +1,128 @@
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QLineEdit, QTableWidget, QTableWidgetItem
-from Indexer import DIR_PATH
+from Indexer import PATH_TEMPLATE, DIR_PATH, processor
+from PyQt5.QtWidgets import (
+    QDesktopWidget, QMainWindow, QSizePolicy, QVBoxLayout, QWidget, QLineEdit,
+    QTableWidget, QTableWidgetItem, QPushButton, QHBoxLayout, QCheckBox, QApplication,
+    QGroupBox, QRadioButton, QButtonGroup
+)
 
 
 class MyWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Search and Table Display")
-        self.setGeometry(200, 200, 600, 400)
+        self.setWindowTitle("RI Indexer")
+        self.setGeometry(400, 400, 900, 900)
 
         layout = QVBoxLayout()
 
-        # Search Bar
+        # Search Section
+        search_layout = QHBoxLayout()
         self.search_bar = QLineEdit()
-        # self.search_bar.returnPressed.connect(self.search)
-        layout.addWidget(self.search_bar)
+        search_layout.addWidget(self.search_bar)
+        search_button = QPushButton("Search")
+        search_button.clicked.connect(self.search)
+        search_layout.addWidget(search_button)
+        layout.addLayout(search_layout)
 
-        # Table
+        # Processing and Indexer Sections
+        processing_indexer_layout = QHBoxLayout()
+
+        # Processing Section
+        processing_group = QGroupBox("Processing")
+        processing_group.setStyleSheet("QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
+        processing_layout = QVBoxLayout()
+        self.tokenization_checkbox = QCheckBox("Tokenization")
+        self.porter_stemmer_checkbox = QCheckBox("Porter Stemmer")
+        processing_layout.addWidget(self.tokenization_checkbox)
+        processing_layout.addWidget(self.porter_stemmer_checkbox)
+        processing_group.setLayout(processing_layout)
+        processing_indexer_layout.addWidget(processing_group)
+
+        # Indexer Section
+        indexer_group = QGroupBox("Indexer")
+        indexer_group.setStyleSheet("QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
+        indexer_layout = QVBoxLayout()
+        self.indexer_docs_radio = QRadioButton("DOCS")
+        self.indexer_terms_radio = QRadioButton("Terms")
+        self.indexer_radio_group = QButtonGroup()
+        self.indexer_radio_group.addButton(self.indexer_docs_radio)
+        self.indexer_radio_group.addButton(self.indexer_terms_radio)
+        indexer_layout.addWidget(self.indexer_docs_radio)
+        indexer_layout.addWidget(self.indexer_terms_radio)
+        indexer_group.setLayout(indexer_layout)
+        processing_indexer_layout.addWidget(indexer_group)
+
+        layout.addLayout(processing_indexer_layout)
+
+        run_button = QPushButton("Run")
+        run_button.clicked.connect(self.run)
+        layout.addWidget(run_button)
+
         self.table = QTableWidget()
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(['Number', 'Term', 'Frequency', 'Weight'])
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
+        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.table)
 
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
+        self.run()
+        self.center()
 
-        # Sample data for the table
-        data_dir = DIR_PATH / "results"
-        data = []
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
 
-        # Populate the table with sample data
-        self.populate_table(data)
+    def populate_table(self):
+        tokenizer = 'nltk' if self.tokenization_checkbox.isChecked() else 'split'
+        stemmer = 'porter' if self.porter_stemmer_checkbox.isChecked() else 'lancaster'
+        descriptor_file = DIR_PATH / PATH_TEMPLATE.format(file_type='descriptor', stemmer=stemmer.capitalize(),
+                                                          tokenizer=tokenizer.capitalize())
+        # inverse_file = DIR_PATH / PATH_TEMPLATE.format(file_type='inverse', stemmer=stemmer.capitalize(),
+        #                                                tokenizer=tokenizer.capitalize())
 
-    def populate_table(self, data):
+        self.setDisabled(True)
+        QApplication.processEvents()
+
+        with open(descriptor_file, 'r') as f:
+            data = [line.split() for line in f.readlines()]
+
         self.table.setRowCount(len(data))
         for row_index, row_data in enumerate(data):
             for col_index, col_data in enumerate(row_data):
                 item = QTableWidgetItem(str(col_data))
                 self.table.setItem(row_index, col_index, item)
 
+        self.setEnabled(True)
+
     def search(self):
         search_text = self.search_bar.text().lower()
         for row in range(self.table.rowCount()):
-            self.table.setRowHidden(row, True)  # Hide all rows
+            row_hidden = True
             for col in range(self.table.columnCount()):
                 item = self.table.item(row, col)
                 if item and search_text in item.text().lower():
-                    self.table.setRowHidden(row, False)  # Show row if search text is found
+                    row_hidden = False
                     break
+
+            self.table.setRowHidden(row, row_hidden)
+
+    def run(self):
+        tokenizer = 'nltk' if self.tokenization_checkbox.isChecked() else 'split'
+        stemmer = 'porter' if self.porter_stemmer_checkbox.isChecked() else 'lancaster'
+
+        indexer_option = "DOCS" if self.indexer_docs_radio.isChecked() else "Terms"
+        print("Indexer Option Selected:", indexer_option)
+
+        self.setDisabled(True)
+        QApplication.processEvents()
+
+        processor(tokenizer=tokenizer, stemmer=stemmer)
+        processor.save()
+        self.search_bar.clear()
+        self.populate_table()
