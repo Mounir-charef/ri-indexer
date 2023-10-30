@@ -1,14 +1,15 @@
-from Indexer.processor import TextProcessor
-import os
-
-DIR_PATH = os.path.join(os.path.dirname(__file__), "Collection")
+import sys
+from PyQt5.QtWidgets import QApplication
+from Indexer.gui import MyWindow
 
 
 def main():
-    docs = [os.path.abspath(os.path.join(DIR_PATH, file)) for file in os.listdir(DIR_PATH) if file.endswith(".txt")]
-    proc = TextProcessor(docs)
-    proc(stemmer='porter')
+    app = QApplication(sys.argv)
+    window = MyWindow()
+    window.show()
+    sys.exit(app.exec_())
 
 
 if __name__ == '__main__':
     main()
+

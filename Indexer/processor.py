@@ -17,13 +17,30 @@ class TextProcessor:
         weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=False)
 
     def __init__(self, docs: [str]):
+        self._tokenizer: str = ''
+        self._stemmer: str = ''
         self.docs: [str] = docs
         self._tokens: [TextProcessor.Token] = []
 
-    def calculate_weight(self, token: Token):
-        for doc_number in token.docs:
-            max_freq = max([token.freq[doc_number] for token in self.tokens if doc_number in token.docs])
-            token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log(len(self.docs) / len(token.docs) + 1)
+    @property
+    def tokenizer(self):
+        if not self._tokenizer:
+            raise Exception("Tokenizer not set")
+        return self._tokenizer
+
+    @tokenizer.setter
+    def tokenizer(self, tokenizer: str):
+        self._tokenizer = tokenizer
+
+    @property
+    def stemmer(self):
+        if not self._stemmer:
+            raise Exception("Stemmer not set")
+        return self._stemmer
+
+    @stemmer.setter
+    def stemmer(self, stemmer: str):
+        self._stemmer = stemmer
 
     @property
     def tokens(self):
@@ -38,29 +55,31 @@ class TextProcessor:
             else:
                 self._tokens.append(token)
 
-    @staticmethod
-    def stem(tokens: [str], stemmer: str = "porter"):
+    def calculate_weight(self, token: Token):
+        for doc_number in token.docs:
+            max_freq = max([token.freq[doc_number] for token in self.tokens if doc_number in token.docs])
+            token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log(len(self.docs) / len(token.docs) + 1)
+
+    def stem(self, tokens: [str]):
         """
         Stem the tokens
         :return:
         """
-        if stemmer == "porter":
+        if self.stemmer == "porter":
             stemmer = PorterStemmer()
-        elif stemmer == "lancaster":
+        elif self.stemmer == "lancaster":
             stemmer = LancasterStemmer()
         else:
             raise Exception("Invalid stemmer")
         return [stemmer.stem(token) for token in tokens]
 
-    @staticmethod
-    def tokenize(text: str, tokenizer: str = "split"):
+    def tokenize(self, text: str):
         """
         Tokenize the text
-        :param tokenizer:
         :param text:
         :return:
         """
-        match tokenizer:
+        match self.tokenizer:
             case "split":
                 return text.split()
             case "nltk":
@@ -105,37 +124,39 @@ class TextProcessor:
                 else:
                     raise Exception("Invalid type")
 
-    @classmethod
-    def process_text(cls, text: str, doc_number: int, tokenizer: str = "split", stemmer: str = "porter"):
-        tokens = TextProcessor.tokenize(text, tokenizer)
-        tokens = TextProcessor.remove_stopwords(tokens)
-        tokens = TextProcessor.stem(tokens, stemmer)
-        tokens = [cls.Token(token, freq={doc_number: freq}, docs=[doc_number])
-                  for token, freq in TextProcessor.get_freq_dist(tokens).items()]
+    def process_text(self, text: str, doc_number: int):
+        tokens = self.tokenize(text)
+        tokens = self.remove_stopwords(tokens)
+        tokens = self.stem(tokens)
+        tokens = [self.Token(token, freq={doc_number: freq}, docs=[doc_number])
+                  for token, freq in self.get_freq_dist(tokens).items()]
         return tokens
 
     def get_tokens_by_doc(self, doc_number: int):
         return [token for token in self.tokens if doc_number in token.docs]
 
-    def __call__(self, tokenizer: str = "nltk", stemmer: str = "porter"):
-        descriptor_file_path = f"results/descriptor{tokenizer.capitalize()}_{stemmer.capitalize()}.txt"
-        inverse_file_path = f"results/inverse{tokenizer.capitalize()}_{stemmer.capitalize()}.txt"
+    def save(self):
+        descriptor_file_path = f"results/descriptor{self.tokenizer.capitalize()}_{self.stemmer.capitalize()}.txt"
+        inverse_file_path = f"results/inverse{self.tokenizer.capitalize()}_{self.stemmer.capitalize()}.txt"
 
         if os.path.exists(descriptor_file_path):
             os.remove(descriptor_file_path)
         if os.path.exists(inverse_file_path):
             os.remove(inverse_file_path)
 
+        for i in range(len(self.docs)):
+            self.write_to_file(descriptor_file_path, i + 1)
+            self.write_to_file(inverse_file_path, i + 1, file_type="inverse")
+
+    def __call__(self, tokenizer: str = "nltk", stemmer: str = "porter"):
+        self.tokenizer = tokenizer
+        self.stemmer = stemmer
         for i, doc in enumerate(self.docs):
             doc_number = i + 1
             with open(doc, "r") as f:
                 text = f.read()
-                tokens = self.process_text(text, doc_number, tokenizer=tokenizer, stemmer=stemmer)
+                tokens = self.process_text(text, doc_number)
                 self.tokens = tokens
 
         for token in self.tokens:
             self.calculate_weight(token)
-
-        for i in range(len(self.docs)):
-            self.write_to_file(descriptor_file_path, i + 1)
-            self.write_to_file(inverse_file_path, i + 1, file_type="inverse")
