@@ -6,6 +6,17 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict
 import math
+from enum import Enum
+
+
+class Tokenizer(Enum):
+    SPLIT = "split"
+    NLTK = "nltk"
+
+
+class Stemmer(Enum):
+    PORTER = "porter"
+    LANCASTER = "lancaster"
 
 
 PATH_TEMPLATE = "results/{file_type}{tokenizer}_{stemmer}.txt"
@@ -64,7 +75,8 @@ class TextProcessor:
     def calculate_weight(self, token: Token):
         for doc_number in token.docs:
             max_freq = max([token.freq[doc_number] for token in self.tokens if doc_number in token.docs])
-            token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log(len(self.docs) / len(token.docs) + 1)
+            token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log(
+                len(self.docs) / len(token.docs) + 1)
 
     def stem(self, tokens: [str]):
         """
@@ -102,8 +114,8 @@ class TextProcessor:
         """
         return FreqDist(tokens)
 
-    @staticmethod
-    def remove_stopwords(tokens: [str]):
+    @classmethod
+    def remove_stopwords(cls, tokens: [str]):
         """
         Remove stopwords from the text
         :param tokens:
@@ -126,7 +138,7 @@ class TextProcessor:
                 if file_type == "descriptor":
                     f.write(f"{doc_number} {token.token} {token.freq[doc_number]} {token.weight[doc_number]:.4f} \n")
                 elif file_type == "inverse":
-                    f.write(f"{token.token} {doc_number} {token.freq[doc_number]} {token.freq[doc_number]} {token.weight[doc_number]:.4f}\n")
+                    f.write(f"{token.token} {doc_number} {token.freq[doc_number]} {token.weight[doc_number]:.4f}\n")
                 else:
                     raise Exception("Invalid type")
 
@@ -157,7 +169,7 @@ class TextProcessor:
     def __call__(self, tokenizer: str = "split", stemmer: str = "lancaster"):
         self.tokenizer = tokenizer
         self.stemmer = stemmer
-        self._tokens = []
+        self.tokens = []
         for i, doc in enumerate(self.docs):
             doc_number = i + 1
             with open(doc, "r") as f:

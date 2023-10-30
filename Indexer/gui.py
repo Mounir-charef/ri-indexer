@@ -81,15 +81,13 @@ class MyWindow(QMainWindow):
     def populate_table(self):
         tokenizer = 'nltk' if self.tokenization_checkbox.isChecked() else 'split'
         stemmer = 'porter' if self.porter_stemmer_checkbox.isChecked() else 'lancaster'
-        descriptor_file = DIR_PATH / PATH_TEMPLATE.format(file_type='descriptor', stemmer=stemmer.capitalize(),
-                                                          tokenizer=tokenizer.capitalize())
-        # inverse_file = DIR_PATH / PATH_TEMPLATE.format(file_type='inverse', stemmer=stemmer.capitalize(),
-        #                                                tokenizer=tokenizer.capitalize())
+        file_type = "descriptor" if self.indexer_docs_radio.isChecked() else "inverse"
+        file = DIR_PATH / PATH_TEMPLATE.format(file_type=file_type, stemmer=stemmer.capitalize(), tokenizer=tokenizer.capitalize())
 
         self.setDisabled(True)
         QApplication.processEvents()
 
-        with open(descriptor_file, 'r') as f:
+        with open(file, 'r') as f:
             data = [line.split() for line in f.readlines()]
 
         self.table.setRowCount(len(data))
@@ -115,9 +113,6 @@ class MyWindow(QMainWindow):
     def run(self):
         tokenizer = 'nltk' if self.tokenization_checkbox.isChecked() else 'split'
         stemmer = 'porter' if self.porter_stemmer_checkbox.isChecked() else 'lancaster'
-
-        indexer_option = "DOCS" if self.indexer_docs_radio.isChecked() else "Terms"
-        print("Indexer Option Selected:", indexer_option)
 
         self.setDisabled(True)
         QApplication.processEvents()

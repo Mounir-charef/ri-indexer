@@ -1,4 +1,4 @@
-from Indexer.processor import TextProcessor, PATH_TEMPLATE
+from Indexer.processor import TextProcessor, PATH_TEMPLATE, Tokenizer, Stemmer
 from pathlib import Path
 
 current_file = Path(__file__).resolve()
@@ -8,3 +8,4 @@ collection_dir = DIR_PATH / "Collection"
 
 docs = [file.resolve() for file in collection_dir.iterdir() if file.suffix == ".txt"]
 processor = TextProcessor(docs)
+processor(tokenizer=Tokenizer.NLTK.value, stemmer=Stemmer.LANCASTER.value)
