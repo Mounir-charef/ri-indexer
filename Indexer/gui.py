@@ -1,4 +1,4 @@
-from Indexer import PATH_TEMPLATE, DIR_PATH, processor
+from Indexer import PATH_TEMPLATE, DIR_PATH, processor, Stemmer, Tokenizer
 from PyQt5.QtWidgets import (
     QDesktopWidget, QMainWindow, QSizePolicy, QVBoxLayout, QWidget, QLineEdit,
     QTableWidget, QTableWidgetItem, QPushButton, QHBoxLayout, QCheckBox, QApplication,
@@ -60,7 +60,6 @@ class MyWindow(QMainWindow):
 
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(['Number', 'Term', 'Frequency', 'Weight'])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -79,11 +78,14 @@ class MyWindow(QMainWindow):
         self.move(qr.topLeft())
 
     def populate_table(self):
-        tokenizer = 'nltk' if self.tokenization_checkbox.isChecked() else 'split'
-        stemmer = 'porter' if self.porter_stemmer_checkbox.isChecked() else 'lancaster'
+        tokenizer = Tokenizer.NLTK if self.tokenization_checkbox.isChecked() else Tokenizer.SPLIT
+        stemmer = Stemmer.PORTER if self.porter_stemmer_checkbox.isChecked() else Stemmer.LANCASTER
         file_type = "descriptor" if self.indexer_docs_radio.isChecked() else "inverse"
-        file = DIR_PATH / PATH_TEMPLATE.format(file_type=file_type, stemmer=stemmer.capitalize(), tokenizer=tokenizer.capitalize())
-
+        file = DIR_PATH / PATH_TEMPLATE.format(file_type=file_type, stemmer=stemmer.value.capitalize(), tokenizer=tokenizer.value.capitalize())
+        if file_type == "descriptor":
+            self.table.setHorizontalHeaderLabels(['N°doc ', 'Term', 'Frequency', 'Weight'])
+        else:
+            self.table.setHorizontalHeaderLabels(['Term', 'N°doc', 'Frequency', 'Weight'])
         self.setDisabled(True)
         QApplication.processEvents()
 
@@ -111,8 +113,8 @@ class MyWindow(QMainWindow):
             self.table.setRowHidden(row, row_hidden)
 
     def run(self):
-        tokenizer = 'nltk' if self.tokenization_checkbox.isChecked() else 'split'
-        stemmer = 'porter' if self.porter_stemmer_checkbox.isChecked() else 'lancaster'
+        tokenizer = Tokenizer.NLTK if self.tokenization_checkbox.isChecked() else Tokenizer.SPLIT
+        stemmer = Stemmer.PORTER if self.porter_stemmer_checkbox.isChecked() else Stemmer.LANCASTER
 
         self.setDisabled(True)
         QApplication.processEvents()

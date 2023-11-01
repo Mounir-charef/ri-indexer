@@ -8,4 +8,4 @@ collection_dir = DIR_PATH / "Collection"
 
 docs = [file.resolve() for file in collection_dir.iterdir() if file.suffix == ".txt"]
 processor = TextProcessor(docs)
-processor(tokenizer=Tokenizer.NLTK.value, stemmer=Stemmer.LANCASTER.value)
+processor(tokenizer=Tokenizer.NLTK, stemmer=Stemmer.LANCASTER)

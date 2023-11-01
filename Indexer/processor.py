@@ -31,8 +31,8 @@ class TextProcessor:
         weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=False)
 
     def __init__(self, docs: [str]):
-        self._tokenizer: str = ''
-        self._stemmer: str = ''
+        self._tokenizer: Tokenizer | None = None
+        self._stemmer: Stemmer | None = None
         self.docs: [str] = docs
         self._tokens: [TextProcessor.Token] = []
 
@@ -43,7 +43,7 @@ class TextProcessor:
         return self._tokenizer
 
     @tokenizer.setter
-    def tokenizer(self, tokenizer: str):
+    def tokenizer(self, tokenizer: Tokenizer):
         self._tokenizer = tokenizer
 
     @property
@@ -53,7 +53,7 @@ class TextProcessor:
         return self._stemmer
 
     @stemmer.setter
-    def stemmer(self, stemmer: str):
+    def stemmer(self, stemmer: Stemmer):
         self._stemmer = stemmer
 
     @property
@@ -83,9 +83,9 @@ class TextProcessor:
         Stem the tokens
         :return:
         """
-        if self.stemmer == "porter":
+        if self.stemmer.value == "porter":
             stemmer = PorterStemmer()
-        elif self.stemmer == "lancaster":
+        elif self.stemmer.value == "lancaster":
             stemmer = LancasterStemmer()
         else:
             raise Exception("Invalid stemmer")
@@ -97,7 +97,7 @@ class TextProcessor:
         :param text:
         :return:
         """
-        match self.tokenizer:
+        match self.tokenizer.value:
             case "split":
                 return text.split()
             case "nltk":
@@ -154,8 +154,8 @@ class TextProcessor:
         return [token for token in self.tokens if doc_number in token.docs]
 
     def save(self):
-        descriptor_file_path = f"results/descriptor{self.tokenizer.capitalize()}_{self.stemmer.capitalize()}.txt"
-        inverse_file_path = f"results/inverse{self.tokenizer.capitalize()}_{self.stemmer.capitalize()}.txt"
+        descriptor_file_path = f"results/descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+        inverse_file_path = f"results/inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
 
         if os.path.exists(descriptor_file_path):
             os.remove(descriptor_file_path)
@@ -166,7 +166,7 @@ class TextProcessor:
             self.write_to_file(descriptor_file_path, i + 1)
             self.write_to_file(inverse_file_path, i + 1, file_type="inverse")
 
-    def __call__(self, tokenizer: str = "split", stemmer: str = "lancaster"):
+    def __call__(self, tokenizer: Tokenizer = Tokenizer.SPLIT, stemmer: Stemmer = Stemmer.LANCASTER):
         self.tokenizer = tokenizer
         self.stemmer = stemmer
         self.tokens = []
