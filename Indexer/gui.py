@@ -11,6 +11,51 @@ class MyWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("RI Indexer")
+        self.setStyleSheet("""
+                    QMainWindow {
+                        background-color: #f4f4f4;
+                    }
+                    QGroupBox {
+                        background-color: #E0E0E0;
+                        border: 1px solid #ccc;
+                        border-radius: 8px;
+                        margin: 10px;
+                        padding: 12px;
+                    }
+                    QLineEdit {
+                        padding: 8px;
+                        border: 1px solid #ccc;
+                        border-radius: 5px;
+                    }
+                    QLineEdit:focus {
+                        border: 1px solid #3498DB;
+                    }
+                    QPushButton {
+                        background-color: #3498DB;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        text-align: center;
+                        text-decoration: none;
+                        display: inline-block;
+                        font-size: 14px;
+                        margin: 8px 4px;
+                        cursor: pointer;
+                        border-radius: 5px;
+                    }
+                    QPushButton:hover {
+                        background-color: #2980B9;
+                    }
+                    QTableWidget {
+                        background-color: #FFFFFF;
+                        border: 1px solid #ccc;
+                        border-radius: 8px;
+                        padding: 8px;
+                        selection-background-color: #3498DB;
+                        selection-color: white;
+                    }
+                    
+                """)
         self.setGeometry(400, 400, 900, 900)
 
         layout = QVBoxLayout()

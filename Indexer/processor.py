@@ -167,7 +167,6 @@ class TextProcessor:
             self.write_to_file(inverse_file_path, i + 1, file_type="inverse")
 
     def __call__(self, tokenizer: Tokenizer = Tokenizer.SPLIT, stemmer: Stemmer = Stemmer.LANCASTER):
-        print(tokenizer)
         self.tokenizer = tokenizer
         self.stemmer = stemmer
         self.tokens = []
