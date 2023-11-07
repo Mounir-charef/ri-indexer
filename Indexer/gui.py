@@ -44,6 +44,7 @@ class MyWindow(QMainWindow):
         indexer_layout = QVBoxLayout()
         self.indexer_docs_radio = QRadioButton("DOCS")
         self.indexer_terms_radio = QRadioButton("Terms")
+        self.indexer_docs_radio.setChecked(True)
         self.indexer_radio_group = QButtonGroup()
         self.indexer_radio_group.addButton(self.indexer_docs_radio)
         self.indexer_radio_group.addButton(self.indexer_terms_radio)
@@ -59,6 +60,7 @@ class MyWindow(QMainWindow):
         layout.addWidget(run_button)
 
         self.table = QTableWidget()
+        self.table.setSortingEnabled(True)
         self.table.setColumnCount(4)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
@@ -121,5 +123,5 @@ class MyWindow(QMainWindow):
 
         processor(tokenizer=tokenizer, stemmer=stemmer)
         processor.save()
-        self.search_bar.clear()
         self.populate_table()
+        self.search()

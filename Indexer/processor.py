@@ -75,7 +75,7 @@ class TextProcessor:
     def calculate_weight(self, token: Token):
         for doc_number in token.docs:
             max_freq = max([token.freq[doc_number] for token in self.tokens if doc_number in token.docs])
-            token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log(
+            token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log10(
                 len(self.docs) / len(token.docs) + 1)
 
     def stem(self, tokens: [str]):
@@ -101,7 +101,7 @@ class TextProcessor:
             case "split":
                 return text.split()
             case "nltk":
-                return nltk.RegexpTokenizer(r'\w+|\$[\d\.]+|\S+').tokenize(text)
+                return nltk.RegexpTokenizer(r'\d+[a-zA-Z]|\w+-?\d+(?:\.\d+)?|\w+').tokenize(text)
             case _:
                 raise Exception("Invalid method")
 
@@ -167,6 +167,7 @@ class TextProcessor:
             self.write_to_file(inverse_file_path, i + 1, file_type="inverse")
 
     def __call__(self, tokenizer: Tokenizer = Tokenizer.SPLIT, stemmer: Stemmer = Stemmer.LANCASTER):
+        print(tokenizer)
         self.tokenizer = tokenizer
         self.stemmer = stemmer
         self.tokens = []
