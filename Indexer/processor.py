@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Dict
 import math
 from enum import Enum
+from pathlib import Path
 
 
 class Tokenizer(Enum):
@@ -17,6 +18,16 @@ class Tokenizer(Enum):
 class Stemmer(Enum):
     PORTER = "porter"
     LANCASTER = "lancaster"
+
+
+class FileType(Enum):
+    DESCRIPTOR = "descriptor"
+    INVERSE = "inverse"
+
+
+class SearchType(Enum):
+    DOCS = "docs"
+    TERM = "term"
 
 
 PATH_TEMPLATE = "results/{file_type}{tokenizer}_{stemmer}.txt"
@@ -30,11 +41,17 @@ class TextProcessor:
         docs: [int] = field(default_factory=list, compare=False, repr=True)
         weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=False)
 
-    def __init__(self, docs: [str]):
+    def __init__(self, docs: [str], file_path: Path):
+        if file_path.exists() and file_path.is_dir():
+            for file in file_path.iterdir():
+                file.unlink()
+            file_path.rmdir()
+        file_path.mkdir()
         self._tokenizer: Tokenizer | None = None
         self._stemmer: Stemmer | None = None
         self.docs: [str] = docs
         self._tokens: [TextProcessor.Token] = []
+        self.file_path = file_path
 
     @property
     def tokenizer(self):
@@ -55,6 +72,14 @@ class TextProcessor:
     @stemmer.setter
     def stemmer(self, stemmer: Stemmer):
         self._stemmer = stemmer
+
+    @property
+    def descriptor_file_path(self):
+        return f"{self.file_path}/descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+
+    @property
+    def inverse_file_path(self):
+        return f"{self.file_path}/inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
 
     @property
     def tokens(self):
@@ -91,6 +116,15 @@ class TextProcessor:
             raise Exception("Invalid stemmer")
         return [stemmer.stem(token) for token in tokens]
 
+    def stem_word(self, token: str):
+        if self.stemmer.value == "porter":
+            stemmer = PorterStemmer()
+        elif self.stemmer.value == "lancaster":
+            stemmer = LancasterStemmer()
+        else:
+            raise Exception("Invalid stemmer")
+        return stemmer.stem(token)
+
     def tokenize(self, text: str):
         """
         Tokenize the text
@@ -101,7 +135,7 @@ class TextProcessor:
             case "split":
                 return text.split()
             case "nltk":
-                return nltk.RegexpTokenizer(r'\d+[a-zA-Z]|\w+-?\d+(?:\.\d+)?|\w+').tokenize(text)
+                return nltk.RegexpTokenizer(r'\w+(?:[-/,%@\.]\w+)*%?').tokenize(text)
             case _:
                 raise Exception("Invalid method")
 
@@ -123,24 +157,61 @@ class TextProcessor:
         """
         return [word for word in tokens if word not in stopwords.words('english')]
 
-    def write_to_file(self, file_path: str, doc_number: int, file_type: str = "descriptor"):
+    def write_to_file(self, doc_number: int, file_type: FileType = FileType.DESCRIPTOR):
         """
         Write tokens to file
-        :param file_path:
         :param doc_number:
         :param file_type:
         :return:
         """
 
         tokens = self.get_tokens_by_doc(doc_number)
+        file_path = self.descriptor_file_path if file_type == FileType.DESCRIPTOR else self.inverse_file_path
         with open(file_path, "a") as f:
             for token in sorted(tokens, key=lambda x: x.token):
-                if file_type == "descriptor":
+                if file_type == FileType.DESCRIPTOR:
                     f.write(f"{doc_number} {token.token} {token.freq[doc_number]} {token.weight[doc_number]:.4f} \n")
-                elif file_type == "inverse":
+                elif file_type == FileType.INVERSE:
                     f.write(f"{token.token} {doc_number} {token.freq[doc_number]} {token.weight[doc_number]:.4f}\n")
                 else:
                     raise Exception("Invalid type")
+
+    def save(self):
+        if os.path.exists(self.descriptor_file_path):
+            os.remove(self.descriptor_file_path)
+        if os.path.exists(self.inverse_file_path):
+            os.remove(self.inverse_file_path)
+
+        for i in range(len(self.docs)):
+            self.write_to_file(i + 1)
+            self.write_to_file(i + 1, file_type=FileType.INVERSE)
+
+    def file_generator(self, file_type: FileType):
+        file_path = self.descriptor_file_path if file_type.value == "descriptor" else self.inverse_file_path
+        with open(file_path, "r") as f:
+            for line in f:
+                yield line.split()
+
+    def search_in_file(self, file_type: FileType, query: str, search_type: SearchType):
+        if not query:
+            file_path = self.descriptor_file_path if file_type.value == "descriptor" else self.inverse_file_path
+            with open(file_path, "r") as f:
+                data = [line.split() for line in f.readlines()]
+            return data
+
+        data = []
+        query = self.stem_word(query) if search_type == SearchType.TERM else query
+        if search_type == SearchType.DOCS:
+            for doc_number, token, freq, weight in self.file_generator(file_type):
+                if query == doc_number:
+                    data.append([doc_number, token, freq, weight])
+        elif search_type == SearchType.TERM:
+            for token, doc_number, freq, weight in self.file_generator(file_type):
+                if query == token:
+                    data.append([doc_number, token, freq, weight])
+        else:
+            raise Exception("Invalid Search type")
+        return data
 
     def process_text(self, text: str, doc_number: int):
         tokens = self.tokenize(text)
@@ -153,19 +224,6 @@ class TextProcessor:
     def get_tokens_by_doc(self, doc_number: int):
         return [token for token in self.tokens if doc_number in token.docs]
 
-    def save(self):
-        descriptor_file_path = f"results/descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
-        inverse_file_path = f"results/inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
-
-        if os.path.exists(descriptor_file_path):
-            os.remove(descriptor_file_path)
-        if os.path.exists(inverse_file_path):
-            os.remove(inverse_file_path)
-
-        for i in range(len(self.docs)):
-            self.write_to_file(descriptor_file_path, i + 1)
-            self.write_to_file(inverse_file_path, i + 1, file_type="inverse")
-
     def __call__(self, tokenizer: Tokenizer = Tokenizer.SPLIT, stemmer: Stemmer = Stemmer.LANCASTER):
         self.tokenizer = tokenizer
         self.stemmer = stemmer
@@ -173,7 +231,7 @@ class TextProcessor:
         for i, doc in enumerate(self.docs):
             doc_number = i + 1
             with open(doc, "r") as f:
-                text = f.read()
+                text = f.read().lower()
                 tokens = self.process_text(text, doc_number)
                 self.add_tokens(tokens)
 

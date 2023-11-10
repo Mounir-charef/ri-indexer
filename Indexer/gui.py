@@ -1,4 +1,5 @@
-from Indexer import PATH_TEMPLATE, DIR_PATH, processor, Stemmer, Tokenizer
+from Indexer import processor, Stemmer, Tokenizer
+from Indexer.processor import FileType, SearchType
 from PyQt5.QtWidgets import (
     QDesktopWidget, QMainWindow, QSizePolicy, QVBoxLayout, QWidget, QLineEdit,
     QTableWidget, QTableWidgetItem, QPushButton, QHBoxLayout, QCheckBox, QApplication,
@@ -78,6 +79,8 @@ class MyWindow(QMainWindow):
         processing_layout = QVBoxLayout()
         self.tokenization_checkbox = QCheckBox("Tokenization")
         self.porter_stemmer_checkbox = QCheckBox("Porter Stemmer")
+        self.tokenization_checkbox.setChecked(True)
+        self.porter_stemmer_checkbox.setChecked(True)
         processing_layout.addWidget(self.tokenization_checkbox)
         processing_layout.addWidget(self.porter_stemmer_checkbox)
         processing_group.setLayout(processing_layout)
@@ -89,7 +92,7 @@ class MyWindow(QMainWindow):
         indexer_layout = QVBoxLayout()
         self.indexer_docs_radio = QRadioButton("DOCS")
         self.indexer_terms_radio = QRadioButton("Terms")
-        self.indexer_docs_radio.setChecked(True)
+        self.indexer_terms_radio.setChecked(True)
         self.indexer_radio_group = QButtonGroup()
         self.indexer_radio_group.addButton(self.indexer_docs_radio)
         self.indexer_radio_group.addButton(self.indexer_terms_radio)
@@ -124,40 +127,22 @@ class MyWindow(QMainWindow):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def populate_table(self):
-        tokenizer = Tokenizer.NLTK if self.tokenization_checkbox.isChecked() else Tokenizer.SPLIT
-        stemmer = Stemmer.PORTER if self.porter_stemmer_checkbox.isChecked() else Stemmer.LANCASTER
-        file_type = "descriptor" if self.indexer_docs_radio.isChecked() else "inverse"
-        file = DIR_PATH / PATH_TEMPLATE.format(file_type=file_type, stemmer=stemmer.value.capitalize(), tokenizer=tokenizer.value.capitalize())
-        if file_type == "descriptor":
+    def search(self):
+        query = self.search_bar.text()
+        if self.indexer_docs_radio.isChecked():
+            file_type = FileType.DESCRIPTOR
+            search_type = SearchType.DOCS
             self.table.setHorizontalHeaderLabels(['N°doc ', 'Term', 'Frequency', 'Weight'])
         else:
+            file_type = FileType.INVERSE
+            search_type = SearchType.TERM
             self.table.setHorizontalHeaderLabels(['Term', 'N°doc', 'Frequency', 'Weight'])
-        self.setDisabled(True)
-        QApplication.processEvents()
-
-        with open(file, 'r') as f:
-            data = [line.split() for line in f.readlines()]
-
+        data = processor.search_in_file(file_type, query, search_type)
         self.table.setRowCount(len(data))
         for row_index, row_data in enumerate(data):
             for col_index, col_data in enumerate(row_data):
                 item = QTableWidgetItem(str(col_data))
                 self.table.setItem(row_index, col_index, item)
-
-        self.setEnabled(True)
-
-    def search(self):
-        search_text = self.search_bar.text().lower()
-        for row in range(self.table.rowCount()):
-            row_hidden = True
-            for col in range(self.table.columnCount()):
-                item = self.table.item(row, col)
-                if item and search_text in item.text().lower():
-                    row_hidden = False
-                    break
-
-            self.table.setRowHidden(row, row_hidden)
 
     def run(self):
         tokenizer = Tokenizer.NLTK if self.tokenization_checkbox.isChecked() else Tokenizer.SPLIT
@@ -165,8 +150,7 @@ class MyWindow(QMainWindow):
 
         self.setDisabled(True)
         QApplication.processEvents()
-
         processor(tokenizer=tokenizer, stemmer=stemmer)
         processor.save()
-        self.populate_table()
         self.search()
+        self.setEnabled(True)
