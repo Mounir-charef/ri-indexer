@@ -208,7 +208,7 @@ class TextProcessor:
         elif search_type == SearchType.TERM:
             for token, doc_number, freq, weight in self.file_generator(file_type):
                 if query == token:
-                    data.append([doc_number, token, freq, weight])
+                    data.append([token, doc_number, freq, weight])
         else:
             raise Exception("Invalid Search type")
         return data
