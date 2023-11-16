@@ -8,6 +8,7 @@ from typing import Dict
 import math
 from enum import Enum
 from pathlib import Path
+from collections import defaultdict
 
 
 class Tokenizer(Enum):
@@ -28,6 +29,7 @@ class FileType(Enum):
 class SearchType(Enum):
     DOCS = "docs"
     TERM = "term"
+    SCAN = 'scan'
 
 
 PATH_TEMPLATE = "results/{file_type}{tokenizer}_{stemmer}.txt"
@@ -139,6 +141,12 @@ class TextProcessor:
             case _:
                 raise Exception("Invalid method")
 
+    def get_token_by_value(self, text: str):
+        for token in self.tokens:
+            if token.token == text:
+                return token
+        raise Exception('No token with such value')
+
     @staticmethod
     def get_freq_dist(tokens: [str]):
         """
@@ -192,25 +200,34 @@ class TextProcessor:
             for line in f:
                 yield line.split()
 
-    def search_in_file(self, file_type: FileType, query: str, search_type: SearchType):
-        if not query:
-            file_path = self.descriptor_file_path if file_type.value == "descriptor" else self.inverse_file_path
+    def search_in_file(self, file_type: FileType, query: str, search_type: SearchType, **kwargs):
+        if not query and search_type != SearchType.SCAN:
+            file_path = self.inverse_file_path if file_type == FileType.INVERSE else self.descriptor_file_path
             with open(file_path, "r") as f:
                 data = [line.split() for line in f.readlines()]
             return data
 
         data = []
-        query = self.stem_word(query) if search_type == SearchType.TERM else query
-        if search_type == SearchType.DOCS:
-            for doc_number, token, freq, weight in self.file_generator(file_type):
-                if query == doc_number:
-                    data.append([doc_number, token, freq, weight])
-        elif search_type == SearchType.TERM:
-            for token, doc_number, freq, weight in self.file_generator(file_type):
-                if query == token:
-                    data.append([token, doc_number, freq, weight])
-        else:
-            raise Exception("Invalid Search type")
+        match search_type:
+            case SearchType.DOCS:
+                for doc_number, token, freq, weight in self.file_generator(file_type):
+                    if query == doc_number:
+                        data.append([doc_number, token, freq, weight])
+            case SearchType.TERM:
+                query = [self.stem_word(word) for word in query.split()]
+                for token, doc_number, freq, weight in self.file_generator(file_type):
+                    if token in query:
+                        data.append([token, doc_number, freq, weight])
+            case SearchType.SCAN:
+                query = [self.stem_word(word) for word in query.split()]
+                total_weight = defaultdict(list)
+                for doc_number, token, freq, weight in self.file_generator(file_type):
+                    if token in query:
+                        total_weight[doc_number].append(float(weight))
+                for doc_number, weights in total_weight.items():
+                    data.append([doc_number, sum(weights)])
+            case _:
+                raise Exception("Invalid Search type")
         return data
 
     def process_text(self, text: str, doc_number: int):

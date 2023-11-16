@@ -6,6 +6,24 @@ from PyQt5.QtWidgets import (
     QGroupBox, QRadioButton, QButtonGroup
 )
 
+FILTERS_PARAMS = {
+    'DOCS': {
+        'file_type': FileType.DESCRIPTOR,
+        'search_type': SearchType.DOCS,
+        'row_labels': ['N°doc ', 'Term', 'Frequency', 'Weight']
+    },
+    'Terms': {
+        'file_type': FileType.INVERSE,
+        'search_type': SearchType.TERM,
+        'row_labels': ['Term ', 'N°doc', 'Frequency', 'Weight']
+    },
+    'Scan': {
+        'file_type': FileType.DESCRIPTOR,
+        'search_type': SearchType.SCAN,
+        'row_labels': ['N°doc ', 'Relevance']
+    },
+}
+
 
 class MyWindow(QMainWindow):
     def __init__(self):
@@ -92,13 +110,16 @@ class MyWindow(QMainWindow):
         indexer_layout = QVBoxLayout()
         self.indexer_docs_radio = QRadioButton("DOCS")
         self.indexer_terms_radio = QRadioButton("Terms")
+        self.indexer_scan_radio = QRadioButton("Scan")
         self.indexer_terms_radio.setChecked(True)
         self.indexer_radio_group = QButtonGroup()
         self.indexer_radio_group.addButton(self.indexer_docs_radio)
         self.indexer_radio_group.addButton(self.indexer_terms_radio)
+        self.indexer_radio_group.addButton(self.indexer_scan_radio)
         self.indexer_radio_group.buttonClicked.connect(self.search)
         indexer_layout.addWidget(self.indexer_docs_radio)
         indexer_layout.addWidget(self.indexer_terms_radio)
+        indexer_layout.addWidget(self.indexer_scan_radio)
         indexer_group.setLayout(indexer_layout)
         processing_indexer_layout.addWidget(indexer_group)
 
@@ -110,7 +131,6 @@ class MyWindow(QMainWindow):
 
         self.table = QTableWidget()
         self.table.setSortingEnabled(True)
-        self.table.setColumnCount(4)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -130,15 +150,11 @@ class MyWindow(QMainWindow):
 
     def search(self):
         query = self.search_bar.text()
-        if self.indexer_docs_radio.isChecked():
-            file_type = FileType.DESCRIPTOR
-            search_type = SearchType.DOCS
-            self.table.setHorizontalHeaderLabels(['N°doc ', 'Term', 'Frequency', 'Weight'])
-        else:
-            file_type = FileType.INVERSE
-            search_type = SearchType.TERM
-            self.table.setHorizontalHeaderLabels(['Term', 'N°doc', 'Frequency', 'Weight'])
-        data = processor.search_in_file(file_type, query, search_type)
+        index_type = self.indexer_radio_group.checkedButton().text()
+        options = FILTERS_PARAMS[index_type]
+        self.table.setColumnCount(len(options['row_labels']))
+        self.table.setHorizontalHeaderLabels(options['row_labels'])
+        data = processor.search_in_file(query=query, **options)
         self.table.setRowCount(len(data))
         for row_index, row_data in enumerate(data):
             for col_index, col_data in enumerate(row_data):
