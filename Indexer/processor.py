@@ -225,8 +225,9 @@ class TextProcessor:
         match search_type:
 
             case SearchType.DOCS:
+                query = [word for word in query.split()]
                 for doc_number, token, freq, weight in self.file_generator(file_type):
-                    if query == doc_number:
+                    if doc_number in query:
                         data.append([doc_number, token, freq, weight])
 
             case SearchType.TERM:
