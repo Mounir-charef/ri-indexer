@@ -1,9 +1,9 @@
 from Indexer import processor, Stemmer, Tokenizer
-from Indexer.processor import FileType, SearchType
+from Indexer.processor import FileType, SearchType, MatchingType
 from PyQt5.QtWidgets import (
     QDesktopWidget, QMainWindow, QSizePolicy, QVBoxLayout, QWidget, QLineEdit,
     QTableWidget, QTableWidgetItem, QPushButton, QHBoxLayout, QCheckBox, QApplication,
-    QGroupBox, QRadioButton, QButtonGroup
+    QGroupBox, QRadioButton, QButtonGroup, QLabel, QComboBox
 )
 
 FILTERS_PARAMS = {
@@ -17,12 +17,40 @@ FILTERS_PARAMS = {
         'search_type': SearchType.TERM,
         'row_labels': ['Term ', 'N°doc', 'Frequency', 'Weight']
     },
-    'Scan': {
+    'Match': {
         'file_type': FileType.DESCRIPTOR,
-        'search_type': SearchType.SCAN,
-        'row_labels': ['N°doc ', 'Relevance']
-    },
+        'search_type': SearchType.MATCH,
+        'row_labels': ['N°doc', 'Frequency']
+    }
 }
+
+
+class Styles:
+    MAIN_WINDOW = """
+        QMainWindow {
+            background-color: #f4f4f4;
+        }
+        /* ... other styles ... */
+    """
+    GROUP_BOX = """
+        QGroupBox {
+            background-color: #E0E0E0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin: 10px;
+            padding: 12px;
+        }
+    """
+    LINE_EDIT = """
+        QLineEdit {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        QLineEdit:focus {
+            border: 1px solid #3498DB;
+        }
+    """
 
 
 class MyWindow(QMainWindow):
@@ -73,7 +101,6 @@ class MyWindow(QMainWindow):
                         selection-background-color: #3498DB;
                         selection-color: white;
                     }
-                    
                 """)
         self.setGeometry(400, 400, 900, 900)
 
@@ -93,7 +120,8 @@ class MyWindow(QMainWindow):
 
         # Processing Section
         processing_group = QGroupBox("Processing")
-        processing_group.setStyleSheet("QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
+        processing_group.setStyleSheet(
+            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
         processing_layout = QVBoxLayout()
         self.tokenization_checkbox = QCheckBox("Tokenization")
         self.porter_stemmer_checkbox = QCheckBox("Porter Stemmer")
@@ -106,24 +134,40 @@ class MyWindow(QMainWindow):
 
         # Indexer Section
         indexer_group = QGroupBox("Indexer")
-        indexer_group.setStyleSheet("QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
+        indexer_group.setStyleSheet(
+            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
         indexer_layout = QVBoxLayout()
         self.indexer_docs_radio = QRadioButton("DOCS")
         self.indexer_terms_radio = QRadioButton("Terms")
-        self.indexer_scan_radio = QRadioButton("Scan")
         self.indexer_terms_radio.setChecked(True)
         self.indexer_radio_group = QButtonGroup()
         self.indexer_radio_group.addButton(self.indexer_docs_radio)
         self.indexer_radio_group.addButton(self.indexer_terms_radio)
-        self.indexer_radio_group.addButton(self.indexer_scan_radio)
         self.indexer_radio_group.buttonClicked.connect(self.search)
         indexer_layout.addWidget(self.indexer_docs_radio)
         indexer_layout.addWidget(self.indexer_terms_radio)
-        indexer_layout.addWidget(self.indexer_scan_radio)
         indexer_group.setLayout(indexer_layout)
         processing_indexer_layout.addWidget(indexer_group)
 
         layout.addLayout(processing_indexer_layout)
+
+        matching_group = QGroupBox("Matching")
+        matching_group.setStyleSheet(
+            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
+        matching_layout = QVBoxLayout()
+
+        self.scan_checkbox = QCheckBox("Vector Space Model")
+        matching_layout.addWidget(self.scan_checkbox)
+
+        matching_type_label = QLabel("Matching Type:")
+        matching_layout.addWidget(matching_type_label)
+
+        self.matching_form_combobox = QComboBox()
+        self.matching_form_combobox.addItems(MatchingType.list())
+        matching_layout.addWidget(self.matching_form_combobox)
+
+        matching_group.setLayout(matching_layout)
+        processing_indexer_layout.addWidget(matching_group)
 
         run_button = QPushButton("Run")
         run_button.clicked.connect(self.run)
@@ -150,11 +194,17 @@ class MyWindow(QMainWindow):
 
     def search(self):
         query = self.search_bar.text()
-        index_type = self.indexer_radio_group.checkedButton().text()
-        options = FILTERS_PARAMS[index_type]
+        if self.scan_checkbox.isChecked():
+            index_type = "Match"
+            match_form = MatchingType(self.matching_form_combobox.currentText())
+            options = FILTERS_PARAMS[index_type]
+            options['matching_form'] = match_form
+        else:
+            index_type = self.indexer_radio_group.checkedButton().text()
+            options = FILTERS_PARAMS[index_type]
         self.table.setColumnCount(len(options['row_labels']))
         self.table.setHorizontalHeaderLabels(options['row_labels'])
-        data = processor.search_in_file(query=query, **options)
+        data = processor.search_in_file(query, **options)
         self.table.setRowCount(len(data))
         for row_index, row_data in enumerate(data):
             for col_index, col_data in enumerate(row_data):
@@ -166,8 +216,10 @@ class MyWindow(QMainWindow):
         stemmer = Stemmer.PORTER if self.porter_stemmer_checkbox.isChecked() else Stemmer.LANCASTER
 
         self.setDisabled(True)
+
         QApplication.processEvents()
         processor(tokenizer=tokenizer, stemmer=stemmer)
         processor.save()
         self.search()
+
         self.setEnabled(True)

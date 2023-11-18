@@ -29,7 +29,17 @@ class FileType(Enum):
 class SearchType(Enum):
     DOCS = "docs"
     TERM = "term"
-    SCAN = 'scan'
+    MATCH = 'match'
+
+
+class MatchingType(Enum):
+    Scalar = "Scalar Product"
+    Cosine = "Cosine Measure"
+    Jaccard = "Jaccard Measure"
+
+    @classmethod
+    def list(cls):
+        return [c.value for c in cls]
 
 
 PATH_TEMPLATE = "results/{file_type}{tokenizer}_{stemmer}.txt"
@@ -147,6 +157,9 @@ class TextProcessor:
                 return token
         raise Exception('No token with such value')
 
+    def get_token_by_doc_number(self, doc_number: int):
+        return [token for token in self.tokens if doc_number in token.docs]
+
     @staticmethod
     def get_freq_dist(tokens: [str]):
         """
@@ -200,8 +213,9 @@ class TextProcessor:
             for line in f:
                 yield line.split()
 
-    def search_in_file(self, file_type: FileType, query: str, search_type: SearchType, **kwargs):
-        if not query and search_type != SearchType.SCAN:
+    def search_in_file(self, query: str, *, file_type: FileType, search_type: SearchType, matching_form=MatchingType.Scalar,
+                       **kwargs):
+        if not query and search_type != SearchType.MATCH:
             file_path = self.inverse_file_path if file_type == FileType.INVERSE else self.descriptor_file_path
             with open(file_path, "r") as f:
                 data = [line.split() for line in f.readlines()]
@@ -209,23 +223,39 @@ class TextProcessor:
 
         data = []
         match search_type:
+
             case SearchType.DOCS:
                 for doc_number, token, freq, weight in self.file_generator(file_type):
                     if query == doc_number:
                         data.append([doc_number, token, freq, weight])
+
             case SearchType.TERM:
                 query = [self.stem_word(word) for word in query.split()]
                 for token, doc_number, freq, weight in self.file_generator(file_type):
                     if token in query:
                         data.append([token, doc_number, freq, weight])
-            case SearchType.SCAN:
+
+            case SearchType.MATCH:
                 query = [self.stem_word(word) for word in query.split()]
                 total_weight = defaultdict(list)
+                doc_weights = defaultdict(list)
                 for doc_number, token, freq, weight in self.file_generator(file_type):
+                    doc_weights[doc_number].append(float(weight) ** 2)
                     if token in query:
                         total_weight[doc_number].append(float(weight))
                 for doc_number, weights in total_weight.items():
-                    data.append([doc_number, sum(weights)])
+                    match matching_form:
+                        case MatchingType.Scalar:
+                            weight = sum(weights)
+                        case MatchingType.Cosine:
+                            weight = sum(weights) / (math.sqrt(len(weights)) * math.sqrt(sum(doc_weights[doc_number])))
+                        case MatchingType.Jaccard:
+                            weight = sum(weights) / (len(weights) + sum(doc_weights[doc_number]) - sum(weights))
+                        case _:
+                            raise Exception("None valid matching formula")
+
+                    data.append([doc_number, round(weight, 4)])
+                data.sort(key=lambda row: row[1], reverse=True)
             case _:
                 raise Exception("Invalid Search type")
         return data
