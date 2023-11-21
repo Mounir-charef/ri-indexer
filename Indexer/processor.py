@@ -51,7 +51,7 @@ class TextProcessor:
         token: str = field(compare=True, repr=True)
         freq: Dict[int, int] = field(compare=False, repr=False)
         docs: [int] = field(default_factory=list, compare=False, repr=True)
-        weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=False)
+        weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=True)
 
     def __init__(self, docs: [str], file_path: Path):
         if file_path.exists() and file_path.is_dir():
@@ -87,11 +87,11 @@ class TextProcessor:
 
     @property
     def descriptor_file_path(self):
-        return f"{self.file_path}/descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+        return self.file_path / f"descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
 
     @property
     def inverse_file_path(self):
-        return f"{self.file_path}/inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+        return self.file_path / f"inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
 
     @property
     def tokens(self):
@@ -220,7 +220,6 @@ class TextProcessor:
             with open(file_path, "r") as f:
                 data = [line.split() for line in f.readlines()]
             return data
-
         data = []
         match search_type:
 
