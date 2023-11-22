@@ -29,7 +29,8 @@ class FileType(Enum):
 class SearchType(Enum):
     DOCS = "docs"
     TERM = "term"
-    MATCH = 'match'
+    VECTOR = 'Vector Space Model'
+    PROBABILITY = 'Probability Space Model'
 
 
 class MatchingType(Enum):
@@ -64,6 +65,7 @@ class TextProcessor:
         self.docs: [str] = docs
         self._tokens: [TextProcessor.Token] = []
         self.file_path = file_path
+        self._tokens_by_doc = defaultdict(list)
 
     @property
     def tokenizer(self):
@@ -101,6 +103,13 @@ class TextProcessor:
     def tokens(self, tokens: list[Token]):
         self._tokens = tokens
 
+    @property
+    def tokens_by_doc(self):
+        if self._tokens_by_doc:
+            return self._tokens_by_doc
+        else:
+            raise Exception('No tokens are yet generated')
+
     def add_tokens(self, tokens: list[Token]):
         for token in tokens:
             if token in self._tokens:
@@ -108,6 +117,7 @@ class TextProcessor:
                 self._tokens[self._tokens.index(token)].freq.update(token.freq)
             else:
                 self._tokens.append(token)
+            self._tokens_by_doc[token.docs[0]].append(token)
 
     def calculate_weight(self, token: Token):
         for doc_number in token.docs:
@@ -213,9 +223,10 @@ class TextProcessor:
             for line in f:
                 yield line.split()
 
-    def search_in_file(self, query: str, *, file_type: FileType, search_type: SearchType, matching_form=MatchingType.Scalar,
+    def search_in_file(self, query: str, *, file_type: FileType, search_type: SearchType,
+                       matching_form=MatchingType.Scalar,
                        **kwargs):
-        if not query and search_type != SearchType.MATCH:
+        if not query and search_type != SearchType.VECTOR:
             file_path = self.inverse_file_path if file_type == FileType.INVERSE else self.descriptor_file_path
             with open(file_path, "r") as f:
                 data = [line.split() for line in f.readlines()]
@@ -235,7 +246,7 @@ class TextProcessor:
                     if token in query:
                         data.append([token, doc_number, freq, weight])
 
-            case SearchType.MATCH:
+            case SearchType.VECTOR:
                 query = [self.stem_word(word) for word in query.split()]
                 total_weight = defaultdict(list)
                 doc_weights = defaultdict(list)
@@ -256,6 +267,23 @@ class TextProcessor:
 
                     data.append([doc_number, round(weight, 4)])
                 data.sort(key=lambda row: row[1], reverse=True)
+
+            case search_type.PROBABILITY:
+                query = [self.stem_word(word) for word in query.split()]
+                k, b = 2, 1.5
+                docs_size = {doc_number: len(self.tokens_by_doc[doc_number]) for doc_number in range(1, len(self.docs) + 1)}
+                average_doc_size = sum(docs_size.values()) / len(self.docs)
+
+                rsv = defaultdict(float)
+                for doc_number, token, freq, weight in self.file_generator(file_type):
+                    if token not in query:
+                        continue
+                    doc_number = int(doc_number)
+                    token = self.get_token_by_value(token)
+                    rsv[doc_number] += (token.freq.get(doc_number, 0) / (k * ((1 - b) + b * (docs_size[doc_number] / average_doc_size)) + token.freq.get(doc_number, 0))) * math.log10((len(self.docs) - len(token.docs) + 0.5) / len(token.docs) + 0.5)
+                for doc_number in rsv:
+                    data.append([doc_number, round(rsv[doc_number], 4)])
+
             case _:
                 raise Exception("Invalid Search type")
         return data

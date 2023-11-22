@@ -17,9 +17,14 @@ FILTERS_PARAMS = {
         'search_type': SearchType.TERM,
         'row_labels': ['Term ', 'N°doc', 'Frequency', 'Weight']
     },
-    'Match': {
+    'Vector Space Model': {
         'file_type': FileType.DESCRIPTOR,
-        'search_type': SearchType.MATCH,
+        'search_type': SearchType.VECTOR,
+        'row_labels': ['N°doc', 'Frequency']
+    },
+    'Probability Model': {
+        'file_type': FileType.DESCRIPTOR,
+        'search_type': SearchType.PROBABILITY,
         'row_labels': ['N°doc', 'Frequency']
     }
 }
@@ -155,16 +160,23 @@ class MyWindow(QMainWindow):
         matching_group.setStyleSheet(
             "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
         matching_layout = QVBoxLayout()
+        self.models_radio_group = QButtonGroup()
 
-        self.scan_checkbox = QCheckBox("Vector Space Model")
-        matching_layout.addWidget(self.scan_checkbox)
+        self.vector_model_radio = QRadioButton("Vector Space Model")
+        self.models_radio_group.addButton(self.vector_model_radio)
+        matching_layout.addWidget(self.vector_model_radio)
 
         matching_type_label = QLabel("Matching Type:")
         matching_layout.addWidget(matching_type_label)
 
         self.matching_form_combobox = QComboBox()
         self.matching_form_combobox.addItems(MatchingType.list())
+
+        self.probability_model_radio = QRadioButton("Probability Model")
+        self.models_radio_group.addButton(self.probability_model_radio)
+
         matching_layout.addWidget(self.matching_form_combobox)
+        matching_layout.addWidget(self.probability_model_radio)
 
         matching_group.setLayout(matching_layout)
         processing_indexer_layout.addWidget(matching_group)
@@ -194,11 +206,11 @@ class MyWindow(QMainWindow):
 
     def search(self):
         query = self.search_bar.text()
-        if self.scan_checkbox.isChecked():
-            index_type = "Match"
-            match_form = MatchingType(self.matching_form_combobox.currentText())
-            options = FILTERS_PARAMS[index_type]
-            options['matching_form'] = match_form
+        if index_type := self.models_radio_group.checkedButton():
+            options = FILTERS_PARAMS[index_type.text()]
+            if index_type.text() == 'Vector Space Model':
+                match_form = MatchingType(self.matching_form_combobox.currentText())
+                options['matching_form'] = match_form
         else:
             index_type = self.indexer_radio_group.checkedButton().text()
             options = FILTERS_PARAMS[index_type]
