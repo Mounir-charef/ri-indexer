@@ -273,17 +273,14 @@ class TextProcessor:
                 k, b = 2, 1.5
                 docs_size = {doc_number: len(self.tokens_by_doc[doc_number]) for doc_number in range(1, len(self.docs) + 1)}
                 average_doc_size = sum(docs_size.values()) / len(self.docs)
-
                 rsv = defaultdict(float)
-                for doc_number, token, freq, weight in self.file_generator(file_type):
-                    if token not in query:
-                        continue
-                    doc_number = int(doc_number)
-                    token = self.get_token_by_value(token)
-                    rsv[doc_number] += (token.freq.get(doc_number, 0) / (k * ((1 - b) + b * (docs_size[doc_number] / average_doc_size)) + token.freq.get(doc_number, 0))) * math.log10((len(self.docs) - len(token.docs) + 0.5) / len(token.docs) + 0.5)
-                for doc_number in rsv:
-                    data.append([doc_number, round(rsv[doc_number], 4)])
+                tokens = [self.get_token_by_value(token) for token in query]
+                for token in tokens:
+                    for doc_number in token.docs:
+                        rsv[doc_number] += (token.freq[doc_number] / (k * ((1 - b) + b * (docs_size[doc_number] / average_doc_size)) + token.freq[doc_number])) * math.log10((len(self.docs) - len(token.docs) + 0.5) / (len(token.docs) + 0.5))
 
+                for doc_number, weight in rsv.items():
+                    data.append([doc_number, round(weight, 4)])
             case _:
                 raise Exception("Invalid Search type")
         return data
