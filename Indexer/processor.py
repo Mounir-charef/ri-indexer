@@ -165,7 +165,6 @@ class TextProcessor:
         for token in self.tokens:
             if token.token == text:
                 return token
-        raise Exception('No token with such value')
 
     def get_token_by_doc_number(self, doc_number: int):
         return [token for token in self.tokens if doc_number in token.docs]
@@ -226,7 +225,7 @@ class TextProcessor:
     def search_in_file(self, query: str, *, file_type: FileType, search_type: SearchType,
                        matching_form=MatchingType.Scalar,
                        **kwargs):
-        if not query and search_type != SearchType.VECTOR:
+        if not query and search_type not in [SearchType.VECTOR, SearchType.PROBABILITY]:
             file_path = self.inverse_file_path if file_type == FileType.INVERSE else self.descriptor_file_path
             with open(file_path, "r") as f:
                 data = [line.split() for line in f.readlines()]
@@ -270,17 +269,18 @@ class TextProcessor:
 
             case search_type.PROBABILITY:
                 query = [self.stem_word(word) for word in query.split()]
-                k, b = 2, 1.5
+                k, b = int(kwargs['matching_params'].get('K', 2)), float(kwargs['matching_params'].get('B', 1.5))
                 docs_size = {doc_number: len(self.tokens_by_doc[doc_number]) for doc_number in range(1, len(self.docs) + 1)}
                 average_doc_size = sum(docs_size.values()) / len(self.docs)
                 rsv = defaultdict(float)
-                tokens = [self.get_token_by_value(token) for token in query]
+                tokens = [self.get_token_by_value(token) for token in query if self.get_token_by_value(token)]
                 for token in tokens:
                     for doc_number in token.docs:
                         rsv[doc_number] += (token.freq[doc_number] / (k * ((1 - b) + b * (docs_size[doc_number] / average_doc_size)) + token.freq[doc_number])) * math.log10((len(self.docs) - len(token.docs) + 0.5) / (len(token.docs) + 0.5))
 
                 for doc_number, weight in rsv.items():
                     data.append([doc_number, round(weight, 4)])
+                data.sort(key=lambda row: row[1], reverse=True)
             case _:
                 raise Exception("Invalid Search type")
         return data

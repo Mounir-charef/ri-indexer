@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QPushButton, QHBoxLayout, QCheckBox, QApplication,
     QGroupBox, QRadioButton, QButtonGroup, QLabel, QComboBox
 )
+from PyQt5.QtGui import QDoubleValidator
 
 FILTERS_PARAMS = {
     'DOCS': {
@@ -20,42 +21,15 @@ FILTERS_PARAMS = {
     'Vector Space Model': {
         'file_type': FileType.DESCRIPTOR,
         'search_type': SearchType.VECTOR,
-        'row_labels': ['N°doc', 'Frequency']
+        'row_labels': ['N°doc', 'Relevance']
     },
     'Probability Model': {
         'file_type': FileType.DESCRIPTOR,
         'search_type': SearchType.PROBABILITY,
-        'row_labels': ['N°doc', 'Frequency']
+        'row_labels': ['N°doc', 'Relevance'],
+        'matching_params': {'K': 2.0, 'B': 1.5}
     }
 }
-
-
-class Styles:
-    MAIN_WINDOW = """
-        QMainWindow {
-            background-color: #f4f4f4;
-        }
-        /* ... other styles ... */
-    """
-    GROUP_BOX = """
-        QGroupBox {
-            background-color: #E0E0E0;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            margin: 10px;
-            padding: 12px;
-        }
-    """
-    LINE_EDIT = """
-        QLineEdit {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        QLineEdit:focus {
-            border: 1px solid #3498DB;
-        }
-    """
 
 
 class MyWindow(QMainWindow):
@@ -110,6 +84,7 @@ class MyWindow(QMainWindow):
         self.setGeometry(400, 400, 900, 900)
 
         layout = QVBoxLayout()
+        float_validator = QDoubleValidator()
 
         # Search Section
         search_layout = QHBoxLayout()
@@ -160,9 +135,15 @@ class MyWindow(QMainWindow):
         matching_group.setStyleSheet(
             "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
         matching_layout = QVBoxLayout()
+
+        # Checkbox to enable/disable matching parameters
+        self.matching_checkbox = QCheckBox("Enable Matching")
+        matching_layout.addWidget(self.matching_checkbox)
+
         self.models_radio_group = QButtonGroup()
 
         self.vector_model_radio = QRadioButton("Vector Space Model")
+        self.vector_model_radio.setChecked(True)
         self.models_radio_group.addButton(self.vector_model_radio)
         matching_layout.addWidget(self.vector_model_radio)
 
@@ -171,12 +152,25 @@ class MyWindow(QMainWindow):
 
         self.matching_form_combobox = QComboBox()
         self.matching_form_combobox.addItems(MatchingType.list())
+        matching_layout.addWidget(self.matching_form_combobox)
 
         self.probability_model_radio = QRadioButton("Probability Model")
         self.models_radio_group.addButton(self.probability_model_radio)
-
-        matching_layout.addWidget(self.matching_form_combobox)
         matching_layout.addWidget(self.probability_model_radio)
+
+        default_k_value = str(FILTERS_PARAMS['Probability Model']['matching_params']['K'])
+        self.k_parameter_edit = QLineEdit(default_k_value)
+        self.k_parameter_edit.setValidator(float_validator)
+        self.k_parameter_edit.setPlaceholderText("Enter K value")
+        self.k_parameter_edit.textChanged.connect(self.update_k_parameter)
+        matching_layout.addWidget(self.k_parameter_edit)
+
+        default_b_value = str(FILTERS_PARAMS['Probability Model']['matching_params']['B'])
+        self.b_parameter_edit = QLineEdit(default_b_value)
+        self.b_parameter_edit.setValidator(float_validator)
+        self.b_parameter_edit.setPlaceholderText("Enter B value")
+        self.b_parameter_edit.textChanged.connect(self.update_b_parameter)
+        matching_layout.addWidget(self.b_parameter_edit)
 
         matching_group.setLayout(matching_layout)
         processing_indexer_layout.addWidget(matching_group)
@@ -186,7 +180,6 @@ class MyWindow(QMainWindow):
         layout.addWidget(run_button)
 
         self.table = QTableWidget()
-        self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -204,9 +197,22 @@ class MyWindow(QMainWindow):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
+    def update_k_parameter(self):
+        try:
+            FILTERS_PARAMS['Probability Model']['matching_params']['K'] = float(self.k_parameter_edit.text())
+        except ValueError:
+            pass
+
+    def update_b_parameter(self):
+        try:
+            FILTERS_PARAMS['Probability Model']['matching_params']['B'] = float(self.b_parameter_edit.text())
+        except ValueError:
+            pass
+
     def search(self):
         query = self.search_bar.text()
-        if index_type := self.models_radio_group.checkedButton():
+        if self.matching_checkbox.isChecked():
+            index_type = self.models_radio_group.checkedButton()
             options = FILTERS_PARAMS[index_type.text()]
             if index_type.text() == 'Vector Space Model':
                 match_form = MatchingType(self.matching_form_combobox.currentText())
