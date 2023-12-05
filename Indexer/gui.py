@@ -28,6 +28,11 @@ FILTERS_PARAMS = {
         'search_type': SearchType.PROBABILITY,
         'row_labels': ['N°doc', 'Relevance'],
         'matching_params': {'K': 2.0, 'B': 1.5}
+    },
+    'Logic Model': {
+        'file_type': FileType.DESCRIPTOR,
+        'search_type': SearchType.LOGIC,
+        'row_labels': ['N°doc', 'Relevance']
     }
 }
 
@@ -171,6 +176,10 @@ class MyWindow(QMainWindow):
         self.b_parameter_edit.setPlaceholderText("Enter B value")
         self.b_parameter_edit.textChanged.connect(self.update_b_parameter)
         matching_layout.addWidget(self.b_parameter_edit)
+
+        self.logic_model_radio = QRadioButton("Logic Model")
+        self.models_radio_group.addButton(self.logic_model_radio)
+        matching_layout.addWidget(self.logic_model_radio)
 
         matching_group.setLayout(matching_layout)
         processing_indexer_layout.addWidget(matching_group)

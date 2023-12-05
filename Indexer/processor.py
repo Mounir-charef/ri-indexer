@@ -9,6 +9,7 @@ import math
 from enum import Enum
 from pathlib import Path
 from collections import defaultdict
+import re
 
 
 class Tokenizer(Enum):
@@ -31,6 +32,7 @@ class SearchType(Enum):
     TERM = "term"
     VECTOR = 'Vector Space Model'
     PROBABILITY = 'Probability Space Model'
+    LOGIC = 'Logic Model'
 
 
 class MatchingType(Enum):
@@ -52,7 +54,8 @@ class TextProcessor:
         token: str = field(compare=True, repr=True)
         freq: Dict[int, int] = field(compare=False, repr=False)
         docs: [int] = field(default_factory=list, compare=False, repr=True)
-        weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=True)
+        weight: Dict[int, float] = field(
+            default_factory=dict, compare=False, repr=True)
 
     def __init__(self, docs: [str], file_path: Path):
         if file_path.exists() and file_path.is_dir():
@@ -121,7 +124,8 @@ class TextProcessor:
 
     def calculate_weight(self, token: Token):
         for doc_number in token.docs:
-            max_freq = max([token.freq[doc_number] for token in self.tokens if doc_number in token.docs])
+            max_freq = max([token.freq[doc_number]
+                           for token in self.tokens if doc_number in token.docs])
             token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log10(
                 len(self.docs) / len(token.docs) + 1)
 
@@ -200,9 +204,11 @@ class TextProcessor:
         with open(file_path, "a") as f:
             for token in sorted(tokens, key=lambda x: x.token):
                 if file_type == FileType.DESCRIPTOR:
-                    f.write(f"{doc_number} {token.token} {token.freq[doc_number]} {token.weight[doc_number]:.4f} \n")
+                    f.write(
+                        f"{doc_number} {token.token} {token.freq[doc_number]} {token.weight[doc_number]:.4f} \n")
                 elif file_type == FileType.INVERSE:
-                    f.write(f"{token.token} {doc_number} {token.freq[doc_number]} {token.weight[doc_number]:.4f}\n")
+                    f.write(
+                        f"{token.token} {doc_number} {token.freq[doc_number]} {token.weight[doc_number]:.4f}\n")
                 else:
                     raise Exception("Invalid type")
 
@@ -258,9 +264,11 @@ class TextProcessor:
                         case MatchingType.Scalar:
                             weight = sum(weights)
                         case MatchingType.Cosine:
-                            weight = sum(weights) / (math.sqrt(len(weights)) * math.sqrt(sum(doc_weights[doc_number])))
+                            weight = sum(weights) / (math.sqrt(len(weights))
+                                                     * math.sqrt(sum(doc_weights[doc_number])))
                         case MatchingType.Jaccard:
-                            weight = sum(weights) / (len(weights) + sum(doc_weights[doc_number]) - sum(weights))
+                            weight = sum(weights) / (len(weights) +
+                                                     sum(doc_weights[doc_number]) - sum(weights))
                         case _:
                             raise Exception("None valid matching formula")
 
@@ -269,18 +277,34 @@ class TextProcessor:
 
             case search_type.PROBABILITY:
                 query = [self.stem_word(word) for word in query.split()]
-                k, b = int(kwargs['matching_params'].get('K', 2)), float(kwargs['matching_params'].get('B', 1.5))
-                docs_size = {doc_number: len(self.tokens_by_doc[doc_number]) for doc_number in range(1, len(self.docs) + 1)}
+                tokens = [self.get_token_by_value(
+                    token) for token in query if self.get_token_by_value(token)]
+                k, b = float(kwargs['matching_params'].get('K', 2)), float(
+                    kwargs['matching_params'].get('B', 1.5))
+                docs_size = defaultdict(int)
+                for doc in range(1, len(self.docs) + 1):
+                    current_tokens = self.get_tokens_by_doc(doc)
+                    docs_size[doc] = sum([token.freq[doc]
+                                         for token in current_tokens])
+
                 average_doc_size = sum(docs_size.values()) / len(self.docs)
                 rsv = defaultdict(float)
-                tokens = [self.get_token_by_value(token) for token in query if self.get_token_by_value(token)]
                 for token in tokens:
                     for doc_number in token.docs:
-                        rsv[doc_number] += (token.freq[doc_number] / (k * ((1 - b) + b * (docs_size[doc_number] / average_doc_size)) + token.freq[doc_number])) * math.log10((len(self.docs) - len(token.docs) + 0.5) / (len(token.docs) + 0.5))
+                        rsv[doc_number] += (token.freq[doc_number] / (k * ((1 - b) + b * (docs_size[doc_number] / average_doc_size)) +
+                                            token.freq[doc_number])) * math.log10((len(self.docs) - len(token.docs) + 0.5) / (len(token.docs) + 0.5))
 
                 for doc_number, weight in rsv.items():
                     data.append([doc_number, round(weight, 4)])
                 data.sort(key=lambda row: row[1], reverse=True)
+            case search_type.LOGIC:
+                def check_query(test_query):
+                    test_query = test_query.strip()
+                    if test_query in ["AND", "OR", "NOT"]:
+                        return False
+                    return bool(re.match(r"^(NOT\s+)?(?!AND|OR|NOT)\w+(\s+(AND|OR)\s+(NOT\s+)?(?!AND|OR|NOT)\w+)*$", test_query))
+
+                print(check_query(query))
             case _:
                 raise Exception("Invalid Search type")
         return data
