@@ -1,39 +1,53 @@
 from Indexer import processor, Stemmer, Tokenizer
 from Indexer.processor import FileType, SearchType, MatchingType
 from PyQt5.QtWidgets import (
-    QDesktopWidget, QMainWindow, QSizePolicy, QVBoxLayout, QWidget, QLineEdit,
-    QTableWidget, QTableWidgetItem, QPushButton, QHBoxLayout, QCheckBox, QApplication,
-    QGroupBox, QRadioButton, QButtonGroup, QLabel, QComboBox
+    QDesktopWidget,
+    QMainWindow,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+    QLineEdit,
+    QTableWidget,
+    QTableWidgetItem,
+    QPushButton,
+    QHBoxLayout,
+    QCheckBox,
+    QApplication,
+    QGroupBox,
+    QRadioButton,
+    QButtonGroup,
+    QLabel,
+    QComboBox,
 )
 from PyQt5.QtGui import QDoubleValidator
 
 FILTERS_PARAMS = {
-    'DOCS': {
-        'file_type': FileType.DESCRIPTOR,
-        'search_type': SearchType.DOCS,
-        'row_labels': ['N°doc ', 'Term', 'Frequency', 'Weight']
+    "DOCS": {
+        "file_type": FileType.DESCRIPTOR,
+        "search_type": SearchType.DOCS,
+        "row_labels": ["N°doc ", "Term", "Frequency", "Weight"],
     },
-    'Terms': {
-        'file_type': FileType.INVERSE,
-        'search_type': SearchType.TERM,
-        'row_labels': ['Term ', 'N°doc', 'Frequency', 'Weight']
+    "Terms": {
+        "file_type": FileType.INVERSE,
+        "search_type": SearchType.TERM,
+        "row_labels": ["Term ", "N°doc", "Frequency", "Weight"],
     },
-    'Vector Space Model': {
-        'file_type': FileType.DESCRIPTOR,
-        'search_type': SearchType.VECTOR,
-        'row_labels': ['N°doc', 'Relevance']
+    "Vector Space Model": {
+        "file_type": FileType.DESCRIPTOR,
+        "search_type": SearchType.VECTOR,
+        "row_labels": ["N°doc", "Relevance"],
     },
-    'Probability Model': {
-        'file_type': FileType.DESCRIPTOR,
-        'search_type': SearchType.PROBABILITY,
-        'row_labels': ['N°doc', 'Relevance'],
-        'matching_params': {'K': 2.0, 'B': 1.5}
+    "Probability Model": {
+        "file_type": FileType.DESCRIPTOR,
+        "search_type": SearchType.PROBABILITY,
+        "row_labels": ["N°doc", "Relevance"],
+        "matching_params": {"K": 2.0, "B": 1.5},
     },
-    'Logic Model': {
-        'file_type': FileType.DESCRIPTOR,
-        'search_type': SearchType.LOGIC,
-        'row_labels': ['N°doc', 'Relevance']
-    }
+    "Logic Model": {
+        "file_type": FileType.DESCRIPTOR,
+        "search_type": SearchType.LOGIC,
+        "row_labels": ["N°doc", "Relevance"],
+    },
 }
 
 
@@ -42,7 +56,8 @@ class MyWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("RI Indexer")
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
                     QMainWindow {
                         background-color: #f4f4f4;
                     }
@@ -85,7 +100,8 @@ class MyWindow(QMainWindow):
                         selection-background-color: #3498DB;
                         selection-color: white;
                     }
-                """)
+                """
+        )
         self.setGeometry(400, 400, 900, 900)
 
         layout = QVBoxLayout()
@@ -106,7 +122,8 @@ class MyWindow(QMainWindow):
         # Processing Section
         processing_group = QGroupBox("Processing")
         processing_group.setStyleSheet(
-            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
+            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }"
+        )
         processing_layout = QVBoxLayout()
         self.tokenization_checkbox = QCheckBox("Tokenization")
         self.porter_stemmer_checkbox = QCheckBox("Porter Stemmer")
@@ -120,7 +137,8 @@ class MyWindow(QMainWindow):
         # Indexer Section
         indexer_group = QGroupBox("Indexer")
         indexer_group.setStyleSheet(
-            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
+            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }"
+        )
         indexer_layout = QVBoxLayout()
         self.indexer_docs_radio = QRadioButton("DOCS")
         self.indexer_terms_radio = QRadioButton("Terms")
@@ -138,7 +156,8 @@ class MyWindow(QMainWindow):
 
         matching_group = QGroupBox("Matching")
         matching_group.setStyleSheet(
-            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }")
+            "QGroupBox { border: 1px solid gray; border-radius: 3px; margin-top: 10px; padding: 10px; }"
+        )
         matching_layout = QVBoxLayout()
 
         # Checkbox to enable/disable matching parameters
@@ -163,14 +182,18 @@ class MyWindow(QMainWindow):
         self.models_radio_group.addButton(self.probability_model_radio)
         matching_layout.addWidget(self.probability_model_radio)
 
-        default_k_value = str(FILTERS_PARAMS['Probability Model']['matching_params']['K'])
+        default_k_value = str(
+            FILTERS_PARAMS["Probability Model"]["matching_params"]["K"]
+        )
         self.k_parameter_edit = QLineEdit(default_k_value)
         self.k_parameter_edit.setValidator(float_validator)
         self.k_parameter_edit.setPlaceholderText("Enter K value")
         self.k_parameter_edit.textChanged.connect(self.update_k_parameter)
         matching_layout.addWidget(self.k_parameter_edit)
 
-        default_b_value = str(FILTERS_PARAMS['Probability Model']['matching_params']['B'])
+        default_b_value = str(
+            FILTERS_PARAMS["Probability Model"]["matching_params"]["B"]
+        )
         self.b_parameter_edit = QLineEdit(default_b_value)
         self.b_parameter_edit.setValidator(float_validator)
         self.b_parameter_edit.setPlaceholderText("Enter B value")
@@ -189,6 +212,7 @@ class MyWindow(QMainWindow):
         layout.addWidget(run_button)
 
         self.table = QTableWidget()
+        self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -208,13 +232,17 @@ class MyWindow(QMainWindow):
 
     def update_k_parameter(self):
         try:
-            FILTERS_PARAMS['Probability Model']['matching_params']['K'] = float(self.k_parameter_edit.text())
+            FILTERS_PARAMS["Probability Model"]["matching_params"]["K"] = float(
+                self.k_parameter_edit.text()
+            )
         except ValueError:
             pass
 
     def update_b_parameter(self):
         try:
-            FILTERS_PARAMS['Probability Model']['matching_params']['B'] = float(self.b_parameter_edit.text())
+            FILTERS_PARAMS["Probability Model"]["matching_params"]["B"] = float(
+                self.b_parameter_edit.text()
+            )
         except ValueError:
             pass
 
@@ -223,14 +251,14 @@ class MyWindow(QMainWindow):
         if self.matching_checkbox.isChecked():
             index_type = self.models_radio_group.checkedButton()
             options = FILTERS_PARAMS[index_type.text()]
-            if index_type.text() == 'Vector Space Model':
+            if index_type.text() == "Vector Space Model":
                 match_form = MatchingType(self.matching_form_combobox.currentText())
-                options['matching_form'] = match_form
+                options["matching_form"] = match_form
         else:
             index_type = self.indexer_radio_group.checkedButton().text()
             options = FILTERS_PARAMS[index_type]
-        self.table.setColumnCount(len(options['row_labels']))
-        self.table.setHorizontalHeaderLabels(options['row_labels'])
+        self.table.setColumnCount(len(options["row_labels"]))
+        self.table.setHorizontalHeaderLabels(options["row_labels"])
         data = processor.search_in_file(query, **options)
         self.table.setRowCount(len(data))
         for row_index, row_data in enumerate(data):
@@ -239,8 +267,16 @@ class MyWindow(QMainWindow):
                 self.table.setItem(row_index, col_index, item)
 
     def run(self):
-        tokenizer = Tokenizer.NLTK if self.tokenization_checkbox.isChecked() else Tokenizer.SPLIT
-        stemmer = Stemmer.PORTER if self.porter_stemmer_checkbox.isChecked() else Stemmer.LANCASTER
+        tokenizer = (
+            Tokenizer.NLTK
+            if self.tokenization_checkbox.isChecked()
+            else Tokenizer.SPLIT
+        )
+        stemmer = (
+            Stemmer.PORTER
+            if self.porter_stemmer_checkbox.isChecked()
+            else Stemmer.LANCASTER
+        )
 
         self.setDisabled(True)
 

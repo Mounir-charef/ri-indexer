@@ -30,9 +30,9 @@ class FileType(Enum):
 class SearchType(Enum):
     DOCS = "docs"
     TERM = "term"
-    VECTOR = 'Vector Space Model'
-    PROBABILITY = 'Probability Space Model'
-    LOGIC = 'Logic Model'
+    VECTOR = "Vector Space Model"
+    PROBABILITY = "Probability Space Model"
+    LOGIC = "Logic Model"
 
 
 class MatchingType(Enum):
@@ -54,8 +54,7 @@ class TextProcessor:
         token: str = field(compare=True, repr=True)
         freq: Dict[int, int] = field(compare=False, repr=False)
         docs: [int] = field(default_factory=list, compare=False, repr=True)
-        weight: Dict[int, float] = field(
-            default_factory=dict, compare=False, repr=True)
+        weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=True)
 
     def __init__(self, docs: [str], file_path: Path):
         if file_path.exists() and file_path.is_dir():
@@ -92,11 +91,17 @@ class TextProcessor:
 
     @property
     def descriptor_file_path(self):
-        return self.file_path / f"descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+        return (
+            self.file_path
+            / f"descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+        )
 
     @property
     def inverse_file_path(self):
-        return self.file_path / f"inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+        return (
+            self.file_path
+            / f"inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+        )
 
     @property
     def tokens(self):
@@ -111,7 +116,7 @@ class TextProcessor:
         if self._tokens_by_doc:
             return self._tokens_by_doc
         else:
-            raise Exception('No tokens are yet generated')
+            raise Exception("No tokens are yet generated")
 
     def add_tokens(self, tokens: list[Token]):
         for token in tokens:
@@ -124,10 +129,16 @@ class TextProcessor:
 
     def calculate_weight(self, token: Token):
         for doc_number in token.docs:
-            max_freq = max([token.freq[doc_number]
-                           for token in self.tokens if doc_number in token.docs])
+            max_freq = max(
+                [
+                    token.freq[doc_number]
+                    for token in self.tokens
+                    if doc_number in token.docs
+                ]
+            )
             token.weight[doc_number] = (token.freq[doc_number] / max_freq) * math.log10(
-                len(self.docs) / len(token.docs) + 1)
+                len(self.docs) / len(token.docs) + 1
+            )
 
     def stem(self, tokens: [str]):
         """
@@ -161,7 +172,7 @@ class TextProcessor:
             case "split":
                 return text.split()
             case "nltk":
-                return nltk.RegexpTokenizer(r'\w+(?:[-/,%@\.]\w+)*%?').tokenize(text)
+                return nltk.RegexpTokenizer(r"\w+(?:[-/,%@\.]\w+)*%?").tokenize(text)
             case _:
                 raise Exception("Invalid method")
 
@@ -189,7 +200,7 @@ class TextProcessor:
         :param tokens:
         :return:
         """
-        return [word for word in tokens if word not in stopwords.words('english')]
+        return [word for word in tokens if word not in stopwords.words("english")]
 
     def write_to_file(self, doc_number: int, file_type: FileType = FileType.DESCRIPTOR):
         """
@@ -200,15 +211,21 @@ class TextProcessor:
         """
 
         tokens = self.get_tokens_by_doc(doc_number)
-        file_path = self.descriptor_file_path if file_type == FileType.DESCRIPTOR else self.inverse_file_path
+        file_path = (
+            self.descriptor_file_path
+            if file_type == FileType.DESCRIPTOR
+            else self.inverse_file_path
+        )
         with open(file_path, "a") as f:
             for token in sorted(tokens, key=lambda x: x.token):
                 if file_type == FileType.DESCRIPTOR:
                     f.write(
-                        f"{doc_number} {token.token} {token.freq[doc_number]} {token.weight[doc_number]:.4f} \n")
+                        f"{doc_number} {token.token} {token.freq[doc_number]} {token.weight[doc_number]:.4f} \n"
+                    )
                 elif file_type == FileType.INVERSE:
                     f.write(
-                        f"{token.token} {doc_number} {token.freq[doc_number]} {token.weight[doc_number]:.4f}\n")
+                        f"{token.token} {doc_number} {token.freq[doc_number]} {token.weight[doc_number]:.4f}\n"
+                    )
                 else:
                     raise Exception("Invalid type")
 
@@ -223,26 +240,39 @@ class TextProcessor:
             self.write_to_file(i + 1, file_type=FileType.INVERSE)
 
     def file_generator(self, file_type: FileType):
-        file_path = self.descriptor_file_path if file_type.value == "descriptor" else self.inverse_file_path
+        file_path = (
+            self.descriptor_file_path
+            if file_type.value == "descriptor"
+            else self.inverse_file_path
+        )
         with open(file_path, "r") as f:
             for line in f:
                 yield line.split()
 
-    def search_in_file(self, query: str, *, file_type: FileType, search_type: SearchType,
-                       matching_form=MatchingType.Scalar,
-                       **kwargs):
+    def search_in_file(
+        self,
+        query: str,
+        *,
+        file_type: FileType,
+        search_type: SearchType,
+        matching_form=MatchingType.Scalar,
+        **kwargs,
+    ):
         if not query and search_type not in [SearchType.VECTOR, SearchType.PROBABILITY]:
-            file_path = self.inverse_file_path if file_type == FileType.INVERSE else self.descriptor_file_path
+            file_path = (
+                self.inverse_file_path
+                if file_type == FileType.INVERSE
+                else self.descriptor_file_path
+            )
             with open(file_path, "r") as f:
                 data = [line.split() for line in f.readlines()]
             return data
         data = []
         match search_type:
-
             case SearchType.DOCS:
-                query = [word for word in query.split()]
+                query = [self.stem_word(word) for word in query.split()]
                 for doc_number, token, freq, weight in self.file_generator(file_type):
-                    if doc_number in query:
+                    if token in query:
                         data.append([doc_number, token, freq, weight])
 
             case SearchType.TERM:
@@ -264,11 +294,16 @@ class TextProcessor:
                         case MatchingType.Scalar:
                             weight = sum(weights)
                         case MatchingType.Cosine:
-                            weight = sum(weights) / (math.sqrt(len(weights))
-                                                     * math.sqrt(sum(doc_weights[doc_number])))
+                            weight = sum(weights) / (
+                                math.sqrt(len(weights))
+                                * math.sqrt(sum(doc_weights[doc_number]))
+                            )
                         case MatchingType.Jaccard:
-                            weight = sum(weights) / (len(weights) +
-                                                     sum(doc_weights[doc_number]) - sum(weights))
+                            weight = sum(weights) / (
+                                len(weights)
+                                + sum(doc_weights[doc_number])
+                                - sum(weights)
+                            )
                         case _:
                             raise Exception("None valid matching formula")
 
@@ -277,34 +312,94 @@ class TextProcessor:
 
             case search_type.PROBABILITY:
                 query = [self.stem_word(word) for word in query.split()]
-                tokens = [self.get_token_by_value(
-                    token) for token in query if self.get_token_by_value(token)]
-                k, b = float(kwargs['matching_params'].get('K', 2)), float(
-                    kwargs['matching_params'].get('B', 1.5))
+                tokens = [
+                    self.get_token_by_value(token)
+                    for token in query
+                    if self.get_token_by_value(token)
+                ]
+                k, b = float(kwargs["matching_params"].get("K", 2)), float(
+                    kwargs["matching_params"].get("B", 1.5)
+                )
                 docs_size = defaultdict(int)
                 for doc in range(1, len(self.docs) + 1):
                     current_tokens = self.get_tokens_by_doc(doc)
-                    docs_size[doc] = sum([token.freq[doc]
-                                         for token in current_tokens])
+                    docs_size[doc] = sum([token.freq[doc] for token in current_tokens])
 
                 average_doc_size = sum(docs_size.values()) / len(self.docs)
                 rsv = defaultdict(float)
                 for token in tokens:
                     for doc_number in token.docs:
-                        rsv[doc_number] += (token.freq[doc_number] / (k * ((1 - b) + b * (docs_size[doc_number] / average_doc_size)) +
-                                            token.freq[doc_number])) * math.log10((len(self.docs) - len(token.docs) + 0.5) / (len(token.docs) + 0.5))
+                        rsv[doc_number] += (
+                            token.freq[doc_number]
+                            / (
+                                k
+                                * (
+                                    (1 - b)
+                                    + b * (docs_size[doc_number] / average_doc_size)
+                                )
+                                + token.freq[doc_number]
+                            )
+                        ) * math.log10(
+                            (len(self.docs) - len(token.docs) + 0.5)
+                            / (len(token.docs) + 0.5)
+                        )
 
                 for doc_number, weight in rsv.items():
                     data.append([doc_number, round(weight, 4)])
                 data.sort(key=lambda row: row[1], reverse=True)
             case search_type.LOGIC:
-                def check_query(test_query):
+
+                def is_valid_query(test_query):
+                    word_pattern = r"\w+(?:[-/,%@\.]\w+)*%?"
                     test_query = test_query.strip()
                     if test_query in ["AND", "OR", "NOT"]:
                         return False
-                    return bool(re.match(r"^(NOT\s+)?(?!AND|OR|NOT)\w+(\s+(AND|OR)\s+(NOT\s+)?(?!AND|OR|NOT)\w+)*$", test_query))
+                    return bool(
+                        re.match(
+                            rf"^(NOT\s+)?(?!AND|OR|NOT){word_pattern}(?:\s+(AND|OR)\s+(NOT\s+)?(?!AND|OR|NOT){word_pattern})*$",
+                            test_query,
+                        )
+                    )
 
-                print(check_query(query))
+                if not is_valid_query(query):
+                    return data
+
+                must_parts = [part.strip() for part in query.strip().split("OR")]
+                results = defaultdict(bool)
+                for part in must_parts:
+                    part = part.split("AND")
+                    positive = [
+                        self.stem_word(term.lower())
+                        for term in part
+                        if not term.strip().startswith("NOT")
+                    ]
+                    negative = [
+                        self.stem_word(term.strip().split()[-1])
+                        for term in part
+                        if term.strip().startswith("NOT")
+                    ]
+                    for doc_id in range(1, len(self.docs) + 1):
+                        tokens = self.get_tokens_by_doc(doc_id)
+                        positive_result = 0
+                        negative_result = 0
+                        for word in positive:
+                            for token in tokens:
+                                if token.token == word:
+                                    positive_result += 1
+
+                        for word in negative:
+                            for token in tokens:
+                                if token.token == word:
+                                    negative_result += 1
+                        results[doc_id] = results.get(doc_id, False) or (
+                            positive_result == len(positive) and negative_result == 0
+                        )
+
+                for doc in results.keys():
+                    if results[doc]:
+                        data.append([doc, results[doc]])
+                data.sort(key=lambda row: row[0])
+
             case _:
                 raise Exception("Invalid Search type")
         return data
@@ -313,14 +408,20 @@ class TextProcessor:
         tokens = self.tokenize(text)
         tokens = self.remove_stopwords(tokens)
         tokens = self.stem(tokens)
-        tokens = [self.Token(token, freq={doc_number: freq}, docs=[doc_number])
-                  for token, freq in self.get_freq_dist(tokens).items()]
+        tokens = [
+            self.Token(token, freq={doc_number: freq}, docs=[doc_number])
+            for token, freq in self.get_freq_dist(tokens).items()
+        ]
         return tokens
 
     def get_tokens_by_doc(self, doc_number: int):
         return [token for token in self.tokens if doc_number in token.docs]
 
-    def __call__(self, tokenizer: Tokenizer = Tokenizer.SPLIT, stemmer: Stemmer = Stemmer.LANCASTER):
+    def __call__(
+        self,
+        tokenizer: Tokenizer = Tokenizer.SPLIT,
+        stemmer: Stemmer = Stemmer.LANCASTER,
+    ):
         self.tokenizer = tokenizer
         self.stemmer = stemmer
         self.tokens = []
