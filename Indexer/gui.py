@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QButtonGroup,
     QLabel,
     QComboBox,
+    QSpinBox
 )
 from PyQt5.QtGui import QDoubleValidator
 
@@ -114,6 +115,15 @@ class MyWindow(QMainWindow):
         search_button = QPushButton("Search")
         search_button.clicked.connect(self.search)
         search_layout.addWidget(search_button)
+
+        # Add search Query select number with checkbox
+        queries_dataset_layout = QHBoxLayout()
+        self.select_queries = QCheckBox("Queries Dataset")
+        self.queries_dataset = QSpinBox()
+        queries_dataset_layout.addWidget(self.select_queries)
+        queries_dataset_layout.addWidget(self.queries_dataset)
+
+        search_layout.addLayout(queries_dataset_layout)
         layout.addLayout(search_layout)
 
         # Processing and Indexer Sections
