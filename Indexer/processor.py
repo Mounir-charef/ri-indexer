@@ -270,19 +270,19 @@ class TextProcessor:
         data = []
         match search_type:
             case SearchType.DOCS:
-                query = [self.stem_word(word) for word in query.split()]
+                query = [self.stem_word(word) for word in self.tokenize(query)]
                 for doc_number, token, freq, weight in self.file_generator(file_type):
                     if token in query:
                         data.append([doc_number, token, freq, weight])
 
             case SearchType.TERM:
-                query = [self.stem_word(word) for word in query.split()]
+                query = [self.stem_word(word) for word in self.tokenize(query)]
                 for token, doc_number, freq, weight in self.file_generator(file_type):
                     if token in query:
                         data.append([token, doc_number, freq, weight])
 
             case SearchType.VECTOR:
-                query = [self.stem_word(word) for word in query.split()]
+                query = [self.stem_word(word) for word in self.tokenize(query)]
                 query = self.remove_stopwords(query)
                 total_weight = defaultdict(list)
                 doc_weights = defaultdict(list)
@@ -312,7 +312,7 @@ class TextProcessor:
                 data.sort(key=lambda row: row[1], reverse=True)
 
             case search_type.PROBABILITY:
-                query = [self.stem_word(word) for word in query.split()]
+                query = [self.stem_word(word) for word in self.tokenize(query)]
                 query = self.remove_stopwords(query)
                 tokens = [
                     self.get_token_by_value(token)
