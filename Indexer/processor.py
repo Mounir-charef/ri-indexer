@@ -283,6 +283,7 @@ class TextProcessor:
 
             case SearchType.VECTOR:
                 query = [self.stem_word(word) for word in query.split()]
+                query = self.remove_stopwords(query)
                 total_weight = defaultdict(list)
                 doc_weights = defaultdict(list)
                 for doc_number, token, freq, weight in self.file_generator(file_type):
@@ -295,12 +296,12 @@ class TextProcessor:
                             weight = sum(weights)
                         case MatchingType.Cosine:
                             weight = sum(weights) / (
-                                math.sqrt(len(weights))
+                                math.sqrt(len(query))
                                 * math.sqrt(sum(doc_weights[doc_number]))
                             )
                         case MatchingType.Jaccard:
                             weight = sum(weights) / (
-                                len(weights)
+                                len(query)
                                 + sum(doc_weights[doc_number])
                                 - sum(weights)
                             )
@@ -312,6 +313,7 @@ class TextProcessor:
 
             case search_type.PROBABILITY:
                 query = [self.stem_word(word) for word in query.split()]
+                query = self.remove_stopwords(query)
                 tokens = [
                     self.get_token_by_value(token)
                     for token in query
