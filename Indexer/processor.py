@@ -269,6 +269,44 @@ class TextProcessor:
             for line in f:
                 yield line.split()
 
+    def evaluate(self, query_index: int, results, search_type: SearchType):
+        """
+            Evaluate the results of the query against the judgements
+        :param query_index: the index of the query
+        :param results: the results of the query
+        :param search_type: the type of search
+        """
+
+        # get the relevant docs
+        relevant_docs = set()
+        for judgement in self.judgements:
+            if judgement[0] == str(query_index):
+                relevant_docs.add(judgement[1])
+
+        # get the retrieved docs
+        retrieved_docs = set()
+        if search_type == SearchType.TERM:
+            for doc in results:
+                retrieved_docs.add(doc[1])
+        else:
+            for doc in results:
+                retrieved_docs.add(doc[0])
+
+        # calculate precision, recall and f1-score
+        precision = len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs)
+        precision_5 = len(relevant_docs.intersection(retrieved_docs[:5])) / len(retrieved_docs)
+        precision_10 = len(relevant_docs.intersection(retrieved_docs[:10])) / len(retrieved_docs)
+        recall = len(relevant_docs.intersection(retrieved_docs)) / len(relevant_docs)
+        f1_score = 2 * precision * recall / (precision + recall)
+
+        return {
+            "Precision": precision,
+            "P@5": precision_5,
+            "P@10": precision_10,
+            "Recall": recall,
+            "F1_score": f1_score,
+        }
+
     def search_in_file(
         self,
         query: str,
