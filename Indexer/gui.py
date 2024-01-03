@@ -1,4 +1,3 @@
-import seaborn
 from PyQt5.QtCore import Qt
 
 from Indexer.processor import (
@@ -30,8 +29,8 @@ from PyQt5.QtWidgets import (
     QSpinBox,
 )
 from PyQt5.QtGui import QDoubleValidator
-import seaborn as sns
-import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 FILTERS_PARAMS = {
     "DOCS": {
@@ -61,6 +60,26 @@ FILTERS_PARAMS = {
         "row_labels": ["N°doc", "Relevance"],
     },
 }
+
+
+class PlotWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.figure = Figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.layout = QVBoxLayout(self)
+        self.layout.addWidget(self.canvas)
+        self.setLayout(self.layout)
+
+    def update_plot(self, data_x, data_y, title, xlabel, ylabel):
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.plot(data_x, data_y)
+        self.canvas.draw()
 
 
 class MyWindow(QMainWindow):
@@ -115,7 +134,7 @@ class MyWindow(QMainWindow):
                     }
                 """
         )
-        self.setGeometry(400, 400, 900, 900)
+        self.setGeometry(900, 900, 900, 900)
 
         layout = QVBoxLayout()
         float_validator = QDoubleValidator()
@@ -241,13 +260,16 @@ class MyWindow(QMainWindow):
         self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
-        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         # Evaluation Section
         self.evaluation_label = QLabel("Evaluation Results:")
         layout.addWidget(self.evaluation_label)
 
         layout.addWidget(self.table)
+
+        self.plot_widget = PlotWidget(parent=self)
+        layout.addWidget(self.plot_widget)
 
         central_widget = QWidget()
         central_widget.setLayout(layout)
@@ -314,7 +336,7 @@ class MyWindow(QMainWindow):
 
         # Evaluation
         if self.select_queries.isChecked() and (
-            options["search_type"] not in [SearchType.DOCS, SearchType.TERM]
+                options["search_type"] not in [SearchType.DOCS, SearchType.TERM]
         ):
             evaluation_results, precision_recall_curve_data = self.processor.evaluate(
                 self.queries_dataset.value(),
@@ -327,16 +349,13 @@ class MyWindow(QMainWindow):
             self.evaluation_label.setText(result_text)
 
             # Plot Precision-Recall Curve
-            plt.figure(figsize=(8, 8))
-            plt.title("Precision-Recall Curve")
-            plt.xlabel("Recall")
-            plt.ylabel("Precision")
-            seaborn.lineplot(
-                data=precision_recall_curve_data,
-                x="recall",
-                y="precision",
+            self.plot_widget.update_plot(
+                precision_recall_curve_data["recall"],
+                precision_recall_curve_data["precision"],
+                "Precision-Recall Curve",
+                "Recall",
+                "Precision",
             )
-            plt.show()
 
     def run(self):
         tokenizer = (
