@@ -304,9 +304,6 @@ class TextProcessor:
                 retrieved_docs.append(doc[0])
 
         # calculate precision, recall and f1-score
-        print(
-            f"Relevant docs: {relevant_docs}, Retrieved docs: {retrieved_docs}, intersection: {relevant_docs.intersection(retrieved_docs)}"
-        )
         precision = (
             len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs)
             if len(retrieved_docs)
@@ -354,7 +351,6 @@ class TextProcessor:
                 else:
                     current = 0
                 pj.append(current)
-        print(f"pj: {pj}, rj: {rj}")
         return {
             "Precision": round(precision, 4),
             "P@5": round(precision_5, 4),

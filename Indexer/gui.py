@@ -11,7 +11,6 @@ from Indexer.processor import (
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QMainWindow,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
     QLineEdit,
@@ -52,7 +51,7 @@ FILTERS_PARAMS = {
         "file_type": FileType.DESCRIPTOR,
         "search_type": SearchType.PROBABILITY,
         "row_labels": ["N°doc", "Relevance"],
-        "matching_params": {"K": 2.0, "B": 1.5},
+        "matching_params": {"K": 1.5, "B": 0.75},
     },
     "Logic Model": {
         "file_type": FileType.DESCRIPTOR,
@@ -134,7 +133,7 @@ class MyWindow(QMainWindow):
                     }
                 """
         )
-        self.setGeometry(900, 900, 900, 900)
+        self.setGeometry(600, 600, 1400, 900)
 
         layout = QVBoxLayout()
         float_validator = QDoubleValidator()
@@ -256,20 +255,21 @@ class MyWindow(QMainWindow):
         run_button.clicked.connect(self.run)
         layout.addWidget(run_button)
 
+        output_layout = QHBoxLayout()
         self.table = QTableWidget()
         self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
-        # self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        output_layout.addWidget(self.table)
 
         # Evaluation Section
         self.evaluation_label = QLabel("Evaluation Results:")
         layout.addWidget(self.evaluation_label)
 
-        layout.addWidget(self.table)
-
         self.plot_widget = PlotWidget(parent=self)
-        layout.addWidget(self.plot_widget)
+        output_layout.addWidget(self.plot_widget)
+
+        layout.addLayout(output_layout)
 
         central_widget = QWidget()
         central_widget.setLayout(layout)
@@ -338,24 +338,27 @@ class MyWindow(QMainWindow):
         if self.select_queries.isChecked() and (
                 options["search_type"] not in [SearchType.DOCS, SearchType.TERM]
         ):
-            evaluation_results, precision_recall_curve_data = self.processor.evaluate(
-                self.queries_dataset.value(),
-                results,
-                search_type=options["search_type"],
-            )
-            result_text = "Evaluation Results:\t"
-            for metric, value in evaluation_results.items():
-                result_text += f"{metric}: {value}  |  "
-            self.evaluation_label.setText(result_text)
+            self.evaluate_results(results, options["search_type"])
 
-            # Plot Precision-Recall Curve
-            self.plot_widget.update_plot(
-                precision_recall_curve_data["recall"],
-                precision_recall_curve_data["precision"],
-                "Precision-Recall Curve",
-                "Recall",
-                "Precision",
-            )
+    def evaluate_results(self, results, search_type):
+        evaluation_results, precision_recall_curve_data = self.processor.evaluate(
+            self.queries_dataset.value(),
+            results,
+            search_type=search_type,
+        )
+        result_text = "Evaluation Results:\t"
+        for metric, value in evaluation_results.items():
+            result_text += f"{metric}: {value}  |  "
+        self.evaluation_label.setText(result_text)
+
+        # Plot Precision-Recall Curve
+        self.plot_widget.update_plot(
+            precision_recall_curve_data["recall"],
+            precision_recall_curve_data["precision"],
+            "Precision-Recall Curve",
+            "Recall",
+            "Precision",
+        )
 
     def run(self):
         tokenizer = (
