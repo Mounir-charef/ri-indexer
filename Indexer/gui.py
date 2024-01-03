@@ -1,3 +1,5 @@
+from PyQt5.QtCore import Qt
+
 from Indexer import processor, Stemmer, Tokenizer
 from Indexer.processor import FileType, SearchType, MatchingType
 from PyQt5.QtWidgets import (
@@ -119,7 +121,9 @@ class MyWindow(QMainWindow):
         # Add search Query select number with checkbox
         queries_dataset_layout = QHBoxLayout()
         self.select_queries = QCheckBox("Queries Dataset")
+        self.select_queries.stateChanged.connect(self.updateSearchBar)
         self.queries_dataset = QSpinBox()
+        self.queries_dataset.valueChanged.connect(self.updateSearchBarContent)
         queries_dataset_layout.addWidget(self.select_queries)
         queries_dataset_layout.addWidget(self.queries_dataset)
 
@@ -255,6 +259,17 @@ class MyWindow(QMainWindow):
             )
         except ValueError:
             pass
+
+    def updateSearchBar(self, state):
+        if state == Qt.Checked:
+            self.search_bar.setDisabled(True)
+            self.search_bar.setText(str(self.queries_dataset.value()))
+        else:
+            self.search_bar.setDisabled(False)
+
+    def updateSearchBarContent(self, value):
+        if self.select_queries.isChecked():
+            self.search_bar.setText(str(value))
 
     def search(self):
         query = self.search_bar.text()
