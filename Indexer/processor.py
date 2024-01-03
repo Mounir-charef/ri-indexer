@@ -311,7 +311,6 @@ class TextProcessor:
     def search_in_file(
         self,
         query: str,
-        query_index: int = None,
         *,
         file_type: FileType,
         search_type: SearchType,
@@ -326,7 +325,7 @@ class TextProcessor:
             )
             with open(file_path, "r") as f:
                 data = [line.split() for line in f.readlines()]
-            return data, None
+            return data
         data = []
         match search_type:
             case SearchType.DOCS:
@@ -422,7 +421,7 @@ class TextProcessor:
                     )
 
                 if not is_valid_query(query):
-                    return data, None
+                    return data
 
                 must_parts = [part.strip() for part in query.strip().split("OR")]
                 results = defaultdict(bool)
@@ -462,10 +461,7 @@ class TextProcessor:
 
             case _:
                 raise Exception("Invalid Search type")
-        if query_index is not None:
-            return data, self.evaluate(query_index, data, search_type)
-        else:
-            return data, None
+        return data
 
     def process_text(self, text: str, doc_number: int):
         tokens = self.tokenize(text)

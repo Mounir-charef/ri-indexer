@@ -291,16 +291,15 @@ class MyWindow(QMainWindow):
             options = FILTERS_PARAMS[index_type]
         self.table.setColumnCount(len(options["row_labels"]))
         self.table.setHorizontalHeaderLabels(options["row_labels"])
-        if self.select_queries.isChecked():
-            data, evaluation = self.processor.search_in_file(query, query_index=self.queries_dataset.value(), **options)
-            print(evaluation)
-        else:
-            data, _ = self.processor.search_in_file(query, **options)
-        self.table.setRowCount(len(data))
-        for row_index, row_data in enumerate(data):
+        results = self.processor.search_in_file(query, **options)
+        self.table.setRowCount(len(results))
+        for row_index, row_data in enumerate(results):
             for col_index, col_data in enumerate(row_data):
                 item = QTableWidgetItem(str(col_data))
                 self.table.setItem(row_index, col_index, item)
+
+        if self.select_queries.isChecked():
+            print(self.processor.evaluate(self.queries_dataset.value(), results, search_type=options["search_type"]))
 
     def run(self):
         tokenizer = (
