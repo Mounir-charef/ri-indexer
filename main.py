@@ -12,13 +12,17 @@ def init_indexer():
     collection_dir = DIR_PATH / "Collection"
     evaluation_dir = DIR_PATH / "eval"
 
-    docs = [file.resolve() for file in collection_dir.iterdir() if file.suffix == ".txt"]
+    docs = [
+        file.resolve() for file in collection_dir.iterdir() if file.suffix == ".txt"
+    ]
     judgement = evaluation_dir / "Judgements.txt"
     queries = evaluation_dir / "Queries.txt"
 
     results_dir = DIR_PATH / "results"
 
-    return TextProcessor(docs, results_dir, judgements_path=judgement, queries_path=queries)
+    return TextProcessor(
+        docs, results_dir, judgements_path=judgement, queries_path=queries
+    )
 
 
 def main():

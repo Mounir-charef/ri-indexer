@@ -56,7 +56,9 @@ class TextProcessor:
         docs: [int] = field(default_factory=list, compare=False, repr=True)
         weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=True)
 
-    def __init__(self, docs: [str], file_path: Path, *, judgements_path: Path, queries_path: Path):
+    def __init__(
+        self, docs: [str], file_path: Path, *, judgements_path: Path, queries_path: Path
+    ):
         if file_path.exists() and file_path.is_dir():
             for file in file_path.iterdir():
                 file.unlink()
@@ -110,15 +112,15 @@ class TextProcessor:
     @property
     def descriptor_file_path(self):
         return (
-                self.file_path
-                / f"descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+            self.file_path
+            / f"descriptor{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
         )
 
     @property
     def inverse_file_path(self):
         return (
-                self.file_path
-                / f"inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
+            self.file_path
+            / f"inverse{self.tokenizer.value.capitalize()}_{self.stemmer.value.capitalize()}.txt"
         )
 
     @property
@@ -268,13 +270,13 @@ class TextProcessor:
                 yield line.split()
 
     def search_in_file(
-            self,
-            query: str,
-            *,
-            file_type: FileType,
-            search_type: SearchType,
-            matching_form=MatchingType.Scalar,
-            **kwargs,
+        self,
+        query: str,
+        *,
+        file_type: FileType,
+        search_type: SearchType,
+        matching_form=MatchingType.Scalar,
+        **kwargs,
     ):
         if not query and search_type not in [SearchType.VECTOR, SearchType.PROBABILITY]:
             file_path = (
@@ -314,14 +316,12 @@ class TextProcessor:
                             weight = sum(weights)
                         case MatchingType.Cosine:
                             weight = sum(weights) / (
-                                    math.sqrt(len(query))
-                                    * math.sqrt(sum(doc_weights[doc_number]))
+                                math.sqrt(len(query))
+                                * math.sqrt(sum(doc_weights[doc_number]))
                             )
                         case MatchingType.Jaccard:
                             weight = sum(weights) / (
-                                    len(query)
-                                    + sum(doc_weights[doc_number])
-                                    - sum(weights)
+                                len(query) + sum(doc_weights[doc_number]) - sum(weights)
                             )
                         case _:
                             raise Exception("None valid matching formula")
@@ -350,16 +350,16 @@ class TextProcessor:
                 for token in tokens:
                     for doc_number in token.docs:
                         rsv[doc_number] += (
-                                                   token.freq[doc_number]
-                                                   / (
-                                                           k
-                                                           * (
-                                                                   (1 - b)
-                                                                   + b * (docs_size[doc_number] / average_doc_size)
-                                                           )
-                                                           + token.freq[doc_number]
-                                                   )
-                                           ) * math.log10(
+                            token.freq[doc_number]
+                            / (
+                                k
+                                * (
+                                    (1 - b)
+                                    + b * (docs_size[doc_number] / average_doc_size)
+                                )
+                                + token.freq[doc_number]
+                            )
+                        ) * math.log10(
                             (len(self.docs) - len(token.docs) + 0.5)
                             / (len(token.docs) + 0.5)
                         )
@@ -412,7 +412,7 @@ class TextProcessor:
                                 if token.token == word:
                                     negative_result += 1
                         results[doc_id] = results.get(doc_id, False) or (
-                                positive_result == len(positive) and negative_result == 0
+                            positive_result == len(positive) and negative_result == 0
                         )
 
                 for doc in results.keys():
@@ -438,9 +438,9 @@ class TextProcessor:
         return [token for token in self.tokens if doc_number in token.docs]
 
     def __call__(
-            self,
-            tokenizer: Tokenizer = Tokenizer.SPLIT,
-            stemmer: Stemmer = Stemmer.LANCASTER,
+        self,
+        tokenizer: Tokenizer = Tokenizer.SPLIT,
+        stemmer: Stemmer = Stemmer.LANCASTER,
     ):
         self.tokenizer = tokenizer
         self.stemmer = stemmer

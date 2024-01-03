@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import (
     QButtonGroup,
     QLabel,
     QComboBox,
-    QSpinBox
+    QSpinBox,
 )
 from PyQt5.QtGui import QDoubleValidator
 
