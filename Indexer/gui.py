@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt
 
-from Indexer import processor, Stemmer, Tokenizer
+from Indexer import Stemmer, Tokenizer
 from Indexer.processor import FileType, SearchType, MatchingType
 from PyQt5.QtWidgets import (
     QDesktopWidget,
@@ -55,8 +55,9 @@ FILTERS_PARAMS = {
 
 
 class MyWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, processor):
         super().__init__()
+        self.processor = processor
 
         self.setWindowTitle("RI Indexer")
         self.setStyleSheet(
@@ -284,7 +285,7 @@ class MyWindow(QMainWindow):
             options = FILTERS_PARAMS[index_type]
         self.table.setColumnCount(len(options["row_labels"]))
         self.table.setHorizontalHeaderLabels(options["row_labels"])
-        data = processor.search_in_file(query, **options)
+        data = self.processor.search_in_file(query, **options)
         self.table.setRowCount(len(data))
         for row_index, row_data in enumerate(data):
             for col_index, col_data in enumerate(row_data):
@@ -306,8 +307,8 @@ class MyWindow(QMainWindow):
         self.setDisabled(True)
 
         QApplication.processEvents()
-        processor(tokenizer=tokenizer, stemmer=stemmer)
-        processor.save()
+        self.processor(tokenizer=tokenizer, stemmer=stemmer)
+        self.processor.save()
         self.search()
 
         self.setEnabled(True)
