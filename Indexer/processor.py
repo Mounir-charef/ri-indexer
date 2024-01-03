@@ -294,8 +294,8 @@ class TextProcessor:
 
         # calculate precision, recall and f1-score
         precision = len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs)
-        precision_5 = len(relevant_docs.intersection(retrieved_docs[:5])) / len(retrieved_docs)
-        precision_10 = len(relevant_docs.intersection(retrieved_docs[:10])) / len(retrieved_docs)
+        precision_5 = len(relevant_docs.intersection(list(retrieved_docs)[:5])) / 5
+        precision_10 = len(relevant_docs.intersection(list(retrieved_docs)[:10])) / 10
         recall = len(relevant_docs.intersection(retrieved_docs)) / len(relevant_docs)
         f1_score = 2 * precision * recall / (precision + recall)
 
@@ -310,6 +310,7 @@ class TextProcessor:
     def search_in_file(
         self,
         query: str,
+        query_index: int = None,
         *,
         file_type: FileType,
         search_type: SearchType,
@@ -460,7 +461,10 @@ class TextProcessor:
 
             case _:
                 raise Exception("Invalid Search type")
-        return data
+        if query_index is not None:
+            return data, self.evaluate(query_index, data, search_type)
+        else:
+            return data
 
     def process_text(self, text: str, doc_number: int):
         tokens = self.tokenize(text)

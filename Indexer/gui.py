@@ -1,7 +1,7 @@
 from PyQt5.QtCore import Qt
 
 from Indexer import Stemmer, Tokenizer
-from Indexer.processor import FileType, SearchType, MatchingType
+from Indexer.processor import FileType, SearchType, MatchingType, TextProcessor
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QMainWindow,
@@ -55,7 +55,7 @@ FILTERS_PARAMS = {
 
 
 class MyWindow(QMainWindow):
-    def __init__(self, processor):
+    def __init__(self, processor: TextProcessor):
         super().__init__()
         self.processor = processor
 
@@ -124,6 +124,8 @@ class MyWindow(QMainWindow):
         self.select_queries = QCheckBox("Queries Dataset")
         self.select_queries.stateChanged.connect(self.updateSearchBar)
         self.queries_dataset = QSpinBox()
+        self.queries_dataset.setMinimum(1)
+        self.queries_dataset.setMaximum(len(self.processor.queries))
         self.queries_dataset.valueChanged.connect(self.updateSearchBarContent)
         queries_dataset_layout.addWidget(self.select_queries)
         queries_dataset_layout.addWidget(self.queries_dataset)
@@ -264,13 +266,17 @@ class MyWindow(QMainWindow):
     def updateSearchBar(self, state):
         if state == Qt.Checked:
             self.search_bar.setDisabled(True)
-            self.search_bar.setText(str(self.queries_dataset.value()))
+            # self.search_bar.setText(str(self.queries_dataset.value()))
+            self.search_bar.setText(self.get_test_query())
         else:
             self.search_bar.setDisabled(False)
 
-    def updateSearchBarContent(self, value):
+    def updateSearchBarContent(self):
         if self.select_queries.isChecked():
-            self.search_bar.setText(str(value))
+            self.search_bar.setText(self.get_test_query())
+
+    def get_test_query(self):
+        return self.processor.queries[self.queries_dataset.value() - 1]
 
     def search(self):
         query = self.search_bar.text()
@@ -285,7 +291,11 @@ class MyWindow(QMainWindow):
             options = FILTERS_PARAMS[index_type]
         self.table.setColumnCount(len(options["row_labels"]))
         self.table.setHorizontalHeaderLabels(options["row_labels"])
-        data = self.processor.search_in_file(query, **options)
+        if self.select_queries.isChecked():
+            data, evaluation = self.processor.search_in_file(query, query_index=self.queries_dataset.value(), **options)
+            print(evaluation)
+        else:
+            data = self.processor.search_in_file(query, **options)
         self.table.setRowCount(len(data))
         for row_index, row_data in enumerate(data):
             for col_index, col_data in enumerate(row_data):
