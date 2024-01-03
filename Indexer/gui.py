@@ -336,7 +336,7 @@ class MyWindow(QMainWindow):
 
         # Evaluation
         if self.select_queries.isChecked() and (
-                options["search_type"] not in [SearchType.DOCS, SearchType.TERM]
+            options["search_type"] not in [SearchType.DOCS, SearchType.TERM]
         ):
             self.evaluate_results(results, options["search_type"])
 
