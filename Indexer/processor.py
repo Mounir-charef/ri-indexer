@@ -340,17 +340,17 @@ class TextProcessor:
             ri.append(len(current_relevant) / len(relevant_docs))
 
         pj = []
-        rj = [i / 10 for i in range(1, 11)]
+        rj = [i / 10 for i in range(0, 11)]
         i = 0
-        current = max(ri)
-        for j in range(len(ranks)):
+        current = max(pi)
+        for j in range(len(ranks) + 1):
             if ri[i] >= rj[j]:
                 pj.append(current)
             else:
                 while i < len(ri) and ri[i] < rj[j]:
                     i += 1
                 if i < 10:
-                    current = pi[i]
+                    current = max(pi[i:])
                 else:
                     current = 0
                 pj.append(current)
