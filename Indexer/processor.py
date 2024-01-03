@@ -57,18 +57,20 @@ class TextProcessor:
         weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=True)
 
     def __init__(
-        self, docs: [str], file_path: Path, *, judgements_path: Path, queries_path: Path
+        self, documents_dir, results_dir: Path, *, judgements_path: Path, queries_path: Path
     ):
-        if file_path.exists() and file_path.is_dir():
-            for file in file_path.iterdir():
+        if results_dir.exists() and results_dir.is_dir():
+            for file in results_dir.iterdir():
                 file.unlink()
-            file_path.rmdir()
-        file_path.mkdir()
+            results_dir.rmdir()
+        results_dir.mkdir()
         self._tokenizer: Tokenizer | None = None
         self._stemmer: Stemmer | None = None
-        self.docs: [str] = docs
+        self.docs: [str] = [
+            file.resolve() for file in documents_dir.iterdir() if file.suffix == ".txt"
+        ]
         self._tokens: [TextProcessor.Token] = []
-        self.file_path = file_path
+        self.file_path = results_dir
         self.judgements_path = judgements_path
         self.queries_path = queries_path
         self._tokens_by_doc = defaultdict(list)
