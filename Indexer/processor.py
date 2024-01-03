@@ -293,6 +293,7 @@ class TextProcessor:
                 retrieved_docs.add(doc[0])
 
         # calculate precision, recall and f1-score
+        print(f'Relevant docs: {relevant_docs}, Retrieved docs: {retrieved_docs}, intersection: {relevant_docs.intersection(retrieved_docs)}')
         precision = len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs)
         precision_5 = len(relevant_docs.intersection(list(retrieved_docs)[:5])) / 5
         precision_10 = len(relevant_docs.intersection(list(retrieved_docs)[:10])) / 10
@@ -304,7 +305,7 @@ class TextProcessor:
             "P@5": precision_5,
             "P@10": precision_10,
             "Recall": recall,
-            "F1_score": f1_score,
+            "F1 score": f1_score,
         }
 
     def search_in_file(
@@ -325,7 +326,7 @@ class TextProcessor:
             )
             with open(file_path, "r") as f:
                 data = [line.split() for line in f.readlines()]
-            return data
+            return data, None
         data = []
         match search_type:
             case SearchType.DOCS:
@@ -404,7 +405,7 @@ class TextProcessor:
                         )
 
                 for doc_number, weight in rsv.items():
-                    data.append([doc_number, round(weight, 4)])
+                    data.append([str(doc_number), round(weight, 4)])
                 data.sort(key=lambda row: row[1], reverse=True)
             case search_type.LOGIC:
 
@@ -421,7 +422,7 @@ class TextProcessor:
                     )
 
                 if not is_valid_query(query):
-                    return data
+                    return data, None
 
                 must_parts = [part.strip() for part in query.strip().split("OR")]
                 results = defaultdict(bool)
@@ -456,7 +457,7 @@ class TextProcessor:
 
                 for doc in results.keys():
                     if results[doc]:
-                        data.append([doc, results[doc]])
+                        data.append([str(doc), results[doc]])
                 data.sort(key=lambda row: row[0])
 
             case _:
@@ -464,7 +465,7 @@ class TextProcessor:
         if query_index is not None:
             return data, self.evaluate(query_index, data, search_type)
         else:
-            return data
+            return data, None
 
     def process_text(self, text: str, doc_number: int):
         tokens = self.tokenize(text)

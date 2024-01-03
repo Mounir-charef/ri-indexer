@@ -295,7 +295,7 @@ class MyWindow(QMainWindow):
             data, evaluation = self.processor.search_in_file(query, query_index=self.queries_dataset.value(), **options)
             print(evaluation)
         else:
-            data = self.processor.search_in_file(query, **options)
+            data, _ = self.processor.search_in_file(query, **options)
         self.table.setRowCount(len(data))
         for row_index, row_data in enumerate(data):
             for col_index, col_data in enumerate(row_data):
