@@ -296,11 +296,11 @@ class TextProcessor:
 
         # calculate precision, recall and f1-score
         print(f'Relevant docs: {relevant_docs}, Retrieved docs: {retrieved_docs}, intersection: {relevant_docs.intersection(retrieved_docs)}')
-        precision = len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs)
+        precision = len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs) if len(retrieved_docs) else 0
         precision_5 = len(relevant_docs.intersection(list(retrieved_docs)[:5])) / 5
         precision_10 = len(relevant_docs.intersection(list(retrieved_docs)[:10])) / 10
-        recall = len(relevant_docs.intersection(retrieved_docs)) / len(relevant_docs)
-        f1_score = 2 * precision * recall / (precision + recall)
+        recall = len(relevant_docs.intersection(retrieved_docs)) / len(relevant_docs) if len(relevant_docs) else 0
+        f1_score = 2 * precision * recall / (precision + recall) if precision + recall else 0
 
         return {
             "Precision": precision,
