@@ -1,8 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from Indexer.gui import MyWindow
 from pathlib import Path
-from Indexer import TextProcessor
+from Indexer import TextProcessor, MyWindow
 
 current_file = Path(__file__).resolve()
 DIR_PATH = current_file.parent
@@ -17,7 +16,10 @@ def init_indexer():
     results_dir = DIR_PATH / "results"
 
     return TextProcessor(
-        documents_dir=collection_dir, results_dir=results_dir, judgements_path=judgement, queries_path=queries
+        documents_dir=collection_dir,
+        results_dir=results_dir,
+        judgements_path=judgement,
+        queries_path=queries,
     )
 
 

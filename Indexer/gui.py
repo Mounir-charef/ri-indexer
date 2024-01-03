@@ -1,7 +1,14 @@
+import seaborn
 from PyQt5.QtCore import Qt
 
-from Indexer import Stemmer, Tokenizer
-from Indexer.processor import FileType, SearchType, MatchingType, TextProcessor
+from Indexer.processor import (
+    FileType,
+    SearchType,
+    MatchingType,
+    TextProcessor,
+    Stemmer,
+    Tokenizer,
+)
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QMainWindow,
@@ -23,6 +30,8 @@ from PyQt5.QtWidgets import (
     QSpinBox,
 )
 from PyQt5.QtGui import QDoubleValidator
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 FILTERS_PARAMS = {
     "DOCS": {
@@ -233,6 +242,11 @@ class MyWindow(QMainWindow):
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        # Evaluation Section
+        self.evaluation_label = QLabel("Evaluation Results:")
+        layout.addWidget(self.evaluation_label)
+
         layout.addWidget(self.table)
 
         central_widget = QWidget()
@@ -298,8 +312,31 @@ class MyWindow(QMainWindow):
                 item = QTableWidgetItem(str(col_data))
                 self.table.setItem(row_index, col_index, item)
 
-        if self.select_queries.isChecked():
-            print(self.processor.evaluate(self.queries_dataset.value(), results, search_type=options["search_type"]))
+        # Evaluation
+        if self.select_queries.isChecked() and (
+            options["search_type"] not in [SearchType.DOCS, SearchType.TERM]
+        ):
+            evaluation_results, precision_recall_curve_data = self.processor.evaluate(
+                self.queries_dataset.value(),
+                results,
+                search_type=options["search_type"],
+            )
+            result_text = "Evaluation Results:\t"
+            for metric, value in evaluation_results.items():
+                result_text += f"{metric}: {value}  |  "
+            self.evaluation_label.setText(result_text)
+
+            # Plot Precision-Recall Curve
+            plt.figure(figsize=(8, 8))
+            plt.title("Precision-Recall Curve")
+            plt.xlabel("Recall")
+            plt.ylabel("Precision")
+            seaborn.lineplot(
+                data=precision_recall_curve_data,
+                x="recall",
+                y="precision",
+            )
+            plt.show()
 
     def run(self):
         tokenizer = (

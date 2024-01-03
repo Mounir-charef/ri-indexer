@@ -1,15 +1,16 @@
-import nltk
-from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer, LancasterStemmer
-from nltk.probability import FreqDist
-import os
-from dataclasses import dataclass, field
-from typing import Dict
 import math
+import os
+import re
+from collections import defaultdict
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from collections import defaultdict
-import re
+from typing import Dict
+
+import nltk
+from nltk.corpus import stopwords
+from nltk.probability import FreqDist
+from nltk.stem import PorterStemmer, LancasterStemmer
 
 
 class Tokenizer(Enum):
@@ -57,7 +58,13 @@ class TextProcessor:
         weight: Dict[int, float] = field(default_factory=dict, compare=False, repr=True)
 
     def __init__(
-        self, documents_dir, results_dir: Path, *, judgements_path: Path, queries_path: Path, docs_prefix=""
+        self,
+        documents_dir,
+        results_dir: Path,
+        *,
+        judgements_path: Path,
+        queries_path: Path,
+        docs_prefix="",
     ):
         if results_dir.exists() and results_dir.is_dir():
             for file in results_dir.iterdir():
@@ -67,7 +74,9 @@ class TextProcessor:
         self._tokenizer: Tokenizer | None = None
         self._stemmer: Stemmer | None = None
         self.docs: [str] = [
-            file.resolve() for file in documents_dir.iterdir() if file.suffix == f"{docs_prefix}.txt"
+            file.resolve()
+            for file in documents_dir.iterdir()
+            if file.suffix == f"{docs_prefix}.txt"
         ]
         self._tokens: [TextProcessor.Token] = []
         self.file_path = results_dir
@@ -286,29 +295,73 @@ class TextProcessor:
                 relevant_docs.add(judgement[1])
 
         # get the retrieved docs
-        retrieved_docs = set()
+        retrieved_docs = []
         if search_type == SearchType.TERM:
             for doc in results:
-                retrieved_docs.add(doc[1])
+                retrieved_docs.append(doc[1])
         else:
             for doc in results:
-                retrieved_docs.add(doc[0])
+                retrieved_docs.append(doc[0])
 
         # calculate precision, recall and f1-score
-        print(f'Relevant docs: {relevant_docs}, Retrieved docs: {retrieved_docs}, intersection: {relevant_docs.intersection(retrieved_docs)}')
-        precision = len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs) if len(retrieved_docs) else 0
-        precision_5 = len(relevant_docs.intersection(list(retrieved_docs)[:5])) / 5
-        precision_10 = len(relevant_docs.intersection(list(retrieved_docs)[:10])) / 10
-        recall = len(relevant_docs.intersection(retrieved_docs)) / len(relevant_docs) if len(relevant_docs) else 0
-        f1_score = 2 * precision * recall / (precision + recall) if precision + recall else 0
+        print(
+            f"Relevant docs: {relevant_docs}, Retrieved docs: {retrieved_docs}, intersection: {relevant_docs.intersection(retrieved_docs)}"
+        )
+        precision = (
+            len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs)
+            if len(retrieved_docs)
+            else 0
+        )
+        precision_5 = len(relevant_docs.intersection(retrieved_docs[:5])) / 5
+        precision_10 = len(relevant_docs.intersection(retrieved_docs[:10])) / 10
+        recall = (
+            len(relevant_docs.intersection(retrieved_docs)) / len(relevant_docs)
+            if len(relevant_docs)
+            else 0
+        )
+        f1_score = (
+            2 * precision * recall / (precision + recall) if precision + recall else 0
+        )
 
+        # get curve
+
+        if len(retrieved_docs) > 10:
+            ranks = retrieved_docs[:10]
+        else:
+            ranks = retrieved_docs + [-1] * (10 - len(retrieved_docs))
+
+        pi = []
+        ri = []
+        current_relevant = set()
+        for i in range(len(ranks)):
+            if ranks[i] in relevant_docs:
+                current_relevant.add(ranks[i])
+            pi.append(len(current_relevant) / (i + 1))
+            ri.append(len(current_relevant) / len(relevant_docs))
+
+        pj = []
+        rj = [i / 10 for i in range(1, 11)]
+        i = 0
+        current = max(ri)
+        for j in range(len(ranks)):
+            if ri[i] >= rj[j]:
+                pj.append(current)
+            else:
+                while i < len(ri) and ri[i] < rj[j]:
+                    i += 1
+                if i < 10:
+                    current = pi[i]
+                else:
+                    current = 0
+                pj.append(current)
+        print(f"pj: {pj}, rj: {rj}")
         return {
-            "Precision": precision,
-            "P@5": precision_5,
-            "P@10": precision_10,
-            "Recall": recall,
-            "F1 score": f1_score,
-        }
+            "Precision": round(precision, 4),
+            "P@5": round(precision_5, 4),
+            "P@10": round(precision_10, 4),
+            "Recall": round(recall, 4),
+            "F1 score": round(f1_score, 4),
+        }, {"recall": rj, "precision": pj}
 
     def search_in_file(
         self,
