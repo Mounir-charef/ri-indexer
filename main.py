@@ -1,4 +1,5 @@
 import sys
+import argparse
 from PyQt5.QtWidgets import QApplication
 from pathlib import Path
 from Indexer import MyWindow
@@ -26,10 +27,21 @@ def init_indexer():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Indexer application")
+    parser.add_argument(
+        "-r",
+        "--reprocess",
+        action="store_true",
+        help="Regenerate index files if this flag is provided",
+    )
+
+    args = parser.parse_args()
+
     indexer = init_indexer()
-    # check for argument of reprocess
-    if len(sys.argv) > 1 and sys.argv[1] == "reprocess":
+
+    if args.reprocess:
         indexer.processor.process_docs()
+
     app = QApplication(sys.argv)
     window = MyWindow(indexer)
     window.show()
