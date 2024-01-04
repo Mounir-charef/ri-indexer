@@ -336,7 +336,7 @@ class MyWindow(QMainWindow):
 
         # Evaluation
         if self.select_queries.isChecked() and (
-            options["search_type"] not in [SearchType.DOCS, SearchType.TERM]
+            options["search_type"] not in [SearchType.DOCS, SearchType.TERM, SearchType.LOGIC]
         ):
             self.evaluate_results(results, options["search_type"])
 
@@ -376,7 +376,6 @@ class MyWindow(QMainWindow):
 
         QApplication.processEvents()
         self.processor(tokenizer=tokenizer, stemmer=stemmer)
-        self.processor.save()
         self.search()
 
         self.setEnabled(True)

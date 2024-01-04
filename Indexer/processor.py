@@ -150,9 +150,13 @@ class TextProcessor:
                 self.tokens[token]["docs"] += value["docs"]
                 for doc_number in value["freq"]:
                     if doc_number not in self.tokens[token]["freq"]:
-                        self.tokens[token]["freq"][doc_number] = value["freq"][doc_number]
+                        self.tokens[token]["freq"][doc_number] = value["freq"][
+                            doc_number
+                        ]
                     else:
-                        self.tokens[token]["freq"][doc_number] += value["freq"][doc_number]
+                        self.tokens[token]["freq"][doc_number] += value["freq"][
+                            doc_number
+                        ]
             self._tokens_by_doc[value["docs"][0]][token] = value
 
     def calculate_weight(self, token_key: str):
@@ -162,11 +166,19 @@ class TextProcessor:
         :return:
         """
         token = self.tokens[token_key]
+
         for doc_number in token["docs"]:
-            max_freq = max(token["freq"].values())
-            token["weight"][doc_number] = (
-                token["freq"][doc_number] / max_freq
-            ) * math.log10(len(self.docs) / len(token["docs"]) + 1)
+            max_freq = max(
+                [
+                    token["freq"][doc_number]
+                    for token in self.get_tokens_by_doc(doc_number).values()
+                ]
+            )
+            token["weight"][doc_number] = round(
+                (token["freq"][doc_number] / max_freq)
+                * math.log10(len(self.docs) / len(token["docs"]) + 1),
+                4,
+            )
 
     def stem(self, tokens: [str]):
         """
@@ -238,42 +250,24 @@ class TextProcessor:
         """
         return [word for word in tokens if word not in stopwords.words("english")]
 
-    def write_to_file(self, doc_number: int, file_type: FileType = FileType.DESCRIPTOR):
-        """
-        Write tokens to file
-        :param doc_number:
-        :param file_type:
-        :return:
-        """
-
-        tokens = self.get_tokens_by_doc(doc_number)
-        file_path = (
-            self.descriptor_file_path
-            if file_type == FileType.DESCRIPTOR
-            else self.inverse_file_path
-        )
-        with open(file_path, "a") as f:
-            for token_id, token in tokens.items():
-                if file_type == FileType.DESCRIPTOR:
-                    f.write(
-                        f"{doc_number} {token_id} {token['freq'][doc_number]} {token['weight'][doc_number]:.4f} \n"
-                    )
-                elif file_type == FileType.INVERSE:
-                    f.write(
-                        f"{token_id} {doc_number} {token['freq'][doc_number]} {token['weight'][doc_number]:.4f}\n"
-                    )
-                else:
-                    raise Exception("Invalid type")
-
     def save(self):
         if os.path.exists(self.descriptor_file_path):
             os.remove(self.descriptor_file_path)
         if os.path.exists(self.inverse_file_path):
             os.remove(self.inverse_file_path)
 
-        for i in range(len(self.docs)):
-            self.write_to_file(i + 1)
-            self.write_to_file(i + 1, file_type=FileType.INVERSE)
+        with open(self.descriptor_file_path, "w") as f:
+            for token, value in self.tokens.items():
+                for doc_number in value["freq"]:
+                    f.write(
+                        f"{doc_number} {token} {value['freq'][doc_number]} {value['weight'][doc_number]}\n"
+                    )
+        with open(self.inverse_file_path, "w") as f:
+            for token, value in self.tokens.items():
+                for doc_number in value["freq"]:
+                    f.write(
+                        f"{token} {doc_number} {value['freq'][doc_number]} {value['weight'][doc_number]}\n"
+                    )
 
     def file_generator(self, file_type: FileType):
         file_path = (
@@ -438,25 +432,27 @@ class TextProcessor:
                 docs_size = defaultdict(int)
                 for doc in range(1, len(self.docs) + 1):
                     current_tokens = self.get_tokens_by_doc(doc)
-                    docs_size[doc] = sum([token.freq[doc] for token in current_tokens])
+                    docs_size[doc] = sum(
+                        [token["freq"][doc] for token in current_tokens.values()]
+                    )
 
                 average_doc_size = sum(docs_size.values()) / len(self.docs)
                 rsv = defaultdict(float)
                 for token in tokens:
-                    for doc_number in token['docs']:
+                    for doc_number in token["docs"]:
                         rsv[doc_number] += (
-                            token['freq'][doc_number]
+                            token["freq"][doc_number]
                             / (
                                 k
                                 * (
                                     (1 - b)
                                     + b * (docs_size[doc_number] / average_doc_size)
                                 )
-                                + token['freq'][doc_number]
+                                + token["freq"][doc_number]
                             )
                         ) * math.log10(
-                            (len(self.docs) - len(token['docs']) + 0.5)
-                            / (len(token['docs']) + 0.5)
+                            (len(self.docs) - len(token["docs"]) + 0.5)
+                            / (len(token["docs"]) + 0.5)
                         )
 
                 for doc_number, weight in rsv.items():
@@ -499,12 +495,12 @@ class TextProcessor:
                         negative_result = 0
                         for word in positive:
                             for token in tokens:
-                                if token.token == word:
+                                if token == word:
                                     positive_result += 1
 
                         for word in negative:
                             for token in tokens:
-                                if token.token == word:
+                                if token == word:
                                     negative_result += 1
                         results[doc_id] = results.get(doc_id, False) or (
                             positive_result == len(positive) and negative_result == 0
@@ -526,11 +522,14 @@ class TextProcessor:
         processed_tokens: dict[str, TextProcessor.Token] = {}
         for token, freq in self.get_freq_dist(tokens).items():
             if token not in processed_tokens:
-                processed_tokens[token] = {"freq": {doc_number: freq}, "docs": [doc_number], "weight": {doc_number: 0}}
+                processed_tokens[token] = {
+                    "freq": {doc_number: freq},
+                    "docs": [doc_number],
+                    "weight": {doc_number: 0},
+                }
             else:
                 processed_tokens[token]["freq"][doc_number] = freq
                 processed_tokens[token]["docs"].append(doc_number)
-                processed_tokens[token]["weight"][doc_number] = 0
         return processed_tokens
 
     def get_tokens_by_doc(self, doc_number: int):
@@ -551,10 +550,11 @@ class TextProcessor:
     ):
         self.tokenizer = tokenizer
         self.stemmer = stemmer
+        self.tokens = {}
         for i, text in enumerate(self.docs):
             doc_number = i + 1
             tokens = self.process_text(text, doc_number)
             self.add_tokens(tokens)
-
         for token in self.tokens:
             self.calculate_weight(token)
+        self.save()
