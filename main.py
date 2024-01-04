@@ -8,7 +8,7 @@ DIR_PATH = current_file.parent
 
 
 def init_indexer():
-    collection_dir = DIR_PATH / "Collection"
+    collection_dir = DIR_PATH / "lisa_collection"
     evaluation_dir = DIR_PATH / "eval"
     judgement = evaluation_dir / "Judgements.txt"
     queries = evaluation_dir / "Queries.txt"
