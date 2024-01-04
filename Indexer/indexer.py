@@ -21,12 +21,10 @@ class Indexer:
         *,
         judgements_path: Path,
         queries_path: Path,
-        docs_prefix="",
     ):
         self.processor = TextProcessor(
             documents_dir,
             results_dir,
-            docs_prefix=docs_prefix,
         )
         self.judgements_path = judgements_path
         self.queries_path = queries_path
@@ -178,14 +176,16 @@ class Indexer:
             case SearchType.DOCS:
                 query = self.processor.process_text(query.lower())
                 for doc_number, token, freq, weight in self.file_generator(file_type):
-                    if token in query:
+                    if doc_number in query:
                         results.append([doc_number, token, freq, weight])
+                results.sort(key=lambda row: row[0])
 
             case SearchType.TERM:
                 query = self.processor.process_text(query.lower())
                 for token, doc_number, freq, weight in self.file_generator(file_type):
                     if token in query:
                         results.append([token, doc_number, freq, weight])
+                results.sort(key=lambda row: row[0])
 
             case SearchType.VECTOR:
                 query = self.processor.process_text(query.lower())
