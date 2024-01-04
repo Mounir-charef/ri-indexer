@@ -21,10 +21,12 @@ class Indexer:
         *,
         judgements_path: Path,
         queries_path: Path,
+        doc_prefix: str = "Doc",
     ):
         self.processor = TextProcessor(
             documents_dir,
             results_dir,
+            doc_prefix=doc_prefix,
         )
         self.judgements_path = judgements_path
         self.queries_path = queries_path
@@ -222,7 +224,6 @@ class Indexer:
                 k, b = float(kwargs["matching_params"].get("K", 2)), float(
                     kwargs["matching_params"].get("B", 1.5)
                 )
-                print(k, b)
                 freq_by_doc = self.get_freq_by_doc()
                 docs_size = {
                     doc_number: sum(freq_by_doc[doc_number].values())

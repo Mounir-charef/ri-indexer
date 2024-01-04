@@ -21,6 +21,7 @@ def init_indexer():
         results_dir=results_dir,
         judgements_path=judgement,
         queries_path=queries,
+        doc_prefix="Doc",
     )
 
 
