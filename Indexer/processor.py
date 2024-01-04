@@ -54,18 +54,16 @@ class TextProcessor:
         docs: list[int]
         weight: dict[int, float]
 
-    def __init__(
-        self,
-        documents_dir: Path,
-        results_dir: Path
-    ):
+    def __init__(self, documents_dir: Path, results_dir: Path):
         # create results directory if not exists
         results_dir.mkdir(parents=True, exist_ok=True)
         self._tokenizer: Tokenizer | None = None
         self._stemmer: Stemmer | None = None
         self.docs: [str] = [
             file.read_text().lower()
-            for file in documents_dir.iterdir()
+            for file in sorted(
+                documents_dir.iterdir(), key=lambda x: int(x.stem.split("Doc")[1])
+            )
         ]
         self.tokens: dict[str, TextProcessor.Token] = {}
         self.file_path = results_dir

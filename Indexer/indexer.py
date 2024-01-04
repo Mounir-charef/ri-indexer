@@ -119,7 +119,9 @@ class Indexer:
             if ranks[i] in relevant_docs:
                 current_relevant.add(ranks[i])
             pi.append(len(current_relevant) / (i + 1))
-            ri.append(len(current_relevant) / len(relevant_docs))
+            ri.append(
+                len(current_relevant) / len(relevant_docs) if len(relevant_docs) else 0
+            )
 
         pj = []
         rj = [i / 10 for i in range(0, 11)]
@@ -220,6 +222,7 @@ class Indexer:
                 k, b = float(kwargs["matching_params"].get("K", 2)), float(
                     kwargs["matching_params"].get("B", 1.5)
                 )
+                print(k, b)
                 freq_by_doc = self.get_freq_by_doc()
                 docs_size = {
                     doc_number: sum(freq_by_doc[doc_number].values())
@@ -280,7 +283,7 @@ class Indexer:
                 for part in or_parts:
                     must_part = part.split("AND")
                     positive = [
-                        self.processor.stem_word(term.lower())
+                        self.processor.stem_word(term.lower().strip())
                         for term in must_part
                         if not term.strip().startswith("NOT")
                     ]
@@ -295,7 +298,9 @@ class Indexer:
                         ):
                             bool_results[doc_number] = True
 
-                results = list(sorted(bool_results.items(), key=lambda x: x[0]))
+                results = sorted(
+                    list(bool_results.items()), key=lambda row: int(row[0])
+                )
             case _:
                 raise ValueError(f"Invalid search type: {search_type}")
         return results
