@@ -4,10 +4,10 @@ from Indexer.processor import (
     FileType,
     SearchType,
     MatchingType,
-    TextProcessor,
     Stemmer,
     Tokenizer,
 )
+from Indexer.indexer import Indexer
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QMainWindow,
@@ -19,7 +19,6 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QHBoxLayout,
     QCheckBox,
-    QApplication,
     QGroupBox,
     QRadioButton,
     QButtonGroup,
@@ -82,7 +81,7 @@ class PlotWidget(QWidget):
 
 
 class MyWindow(QMainWindow):
-    def __init__(self, processor: TextProcessor):
+    def __init__(self, processor: Indexer):
         super().__init__()
         self.processor = processor
 
@@ -251,10 +250,6 @@ class MyWindow(QMainWindow):
         matching_group.setLayout(matching_layout)
         processing_indexer_layout.addWidget(matching_group)
 
-        run_button = QPushButton("Run")
-        run_button.clicked.connect(self.run)
-        layout.addWidget(run_button)
-
         output_layout = QHBoxLayout()
         self.table = QTableWidget()
         self.table.setSortingEnabled(True)
@@ -274,7 +269,6 @@ class MyWindow(QMainWindow):
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
-        self.run()
         self.center()
 
     def center(self):
@@ -321,13 +315,21 @@ class MyWindow(QMainWindow):
             options = FILTERS_PARAMS[index_type.text()]
             if index_type.text() == "Vector Space Model":
                 match_form = MatchingType(self.matching_form_combobox.currentText())
-                options["matching_form"] = match_form
+                options["matching_type"] = match_form
         else:
             index_type = self.indexer_radio_group.checkedButton().text()
             options = FILTERS_PARAMS[index_type]
+
+        # Processing parameters
+        options["stemmer"] = Stemmer.PORTER if self.porter_stemmer_checkbox.isChecked() else Stemmer.LANCASTER
+        options["tokenizer"] = Tokenizer.NLTK if self.tokenization_checkbox.isChecked() else Tokenizer.SPLIT
+
         self.table.setColumnCount(len(options["row_labels"]))
         self.table.setHorizontalHeaderLabels(options["row_labels"])
-        results = self.processor.search_in_file(query, **options)
+
+        print(options)
+        results = self.processor(query, **options)
+
         self.table.setRowCount(len(results))
         for row_index, row_data in enumerate(results):
             for col_index, col_data in enumerate(row_data):
@@ -360,23 +362,3 @@ class MyWindow(QMainWindow):
             "Recall",
             "Precision",
         )
-
-    def run(self):
-        tokenizer = (
-            Tokenizer.NLTK
-            if self.tokenization_checkbox.isChecked()
-            else Tokenizer.SPLIT
-        )
-        stemmer = (
-            Stemmer.PORTER
-            if self.porter_stemmer_checkbox.isChecked()
-            else Stemmer.LANCASTER
-        )
-
-        self.setDisabled(True)
-
-        QApplication.processEvents()
-        self.processor(tokenizer=tokenizer, stemmer=stemmer)
-        self.search()
-
-        self.setEnabled(True)

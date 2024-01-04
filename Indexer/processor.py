@@ -9,6 +9,7 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 from nltk.stem import PorterStemmer, LancasterStemmer
+from tqdm import tqdm
 
 
 class Tokenizer(Enum):
@@ -58,15 +59,10 @@ class TextProcessor:
         documents_dir: Path,
         results_dir: Path,
         *,
-        judgements_path: Path,
-        queries_path: Path,
         docs_prefix="",
     ):
-        if results_dir.exists() and results_dir.is_dir():
-            for file in results_dir.iterdir():
-                file.unlink()
-            results_dir.rmdir()
-        results_dir.mkdir()
+        # create results directory if not exists
+        results_dir.mkdir(parents=True, exist_ok=True)
         self._tokenizer: Tokenizer | None = None
         self._stemmer: Stemmer | None = None
         self.docs: [str] = [
@@ -76,25 +72,7 @@ class TextProcessor:
         ]
         self.tokens: dict[str, TextProcessor.Token] = {}
         self.file_path = results_dir
-        self.judgements_path = judgements_path
-        self.queries_path = queries_path
         self._tokens_by_doc = defaultdict(dict)
-
-    @property
-    def judgements(self) -> list[[str, str]]:
-        try:
-            with open(self.judgements_path, "r") as f:
-                return [line.split() for line in f.readlines()]
-        except FileNotFoundError:
-            return []
-
-    @property
-    def queries(self) -> list[str]:
-        try:
-            with open(self.queries_path, "r") as f:
-                return [line.strip() for line in f.readlines()]
-        except FileNotFoundError:
-            return []
 
     @property
     def tokenizer(self):
@@ -115,6 +93,10 @@ class TextProcessor:
     @stemmer.setter
     def stemmer(self, stemmer: Stemmer):
         self._stemmer = stemmer
+
+    def set_processor(self, tokenizer: Tokenizer, stemmer: Stemmer):
+        self.tokenizer = tokenizer
+        self.stemmer = stemmer
 
     @property
     def descriptor_file_path(self):
@@ -191,7 +173,11 @@ class TextProcessor:
             stemmer = LancasterStemmer()
         else:
             raise Exception("Invalid stemmer")
-        return [stemmer.stem(token) for token in tokens]
+        return [
+            stemmer.stem(token)
+            for token in tokens
+            if token not in set(stopwords.words("english"))
+        ]
 
     def stem_word(self, token: str):
         if self.stemmer.value == "porter":
@@ -216,40 +202,6 @@ class TextProcessor:
             case _:
                 raise Exception("Invalid method")
 
-    def get_token_by_value(self, text: str):
-        """
-        Get token by value
-        :param text:
-        :return:
-        """
-        return self.tokens.get(text)
-
-    def get_token_by_doc_number(self, doc_number: int):
-        """
-        Get token by doc number
-        :param doc_number:
-        :return:
-        """
-        return self.tokens_by_doc.get(doc_number)
-
-    @staticmethod
-    def get_freq_dist(tokens: [str]):
-        """
-        Get frequency distribution of tokens
-        :param tokens:
-        :return:
-        """
-        return FreqDist(tokens)
-
-    @classmethod
-    def remove_stopwords(cls, tokens: [str]):
-        """
-        Remove stopwords from the text
-        :param tokens:
-        :return:
-        """
-        return [word for word in tokens if word not in stopwords.words("english")]
-
     def save(self):
         if os.path.exists(self.descriptor_file_path):
             os.remove(self.descriptor_file_path)
@@ -269,105 +221,19 @@ class TextProcessor:
                         f"{token} {doc_number} {value['freq'][doc_number]} {value['weight'][doc_number]}\n"
                     )
 
-    def file_generator(self, file_type: FileType):
-        file_path = (
-            self.descriptor_file_path
-            if file_type.value == "descriptor"
-            else self.inverse_file_path
-        )
-        with open(file_path, "r") as f:
-            for line in f:
-                yield line.split()
-
-    def evaluate(self, query_index: int, results, search_type: SearchType):
-        """
-            Evaluate the results of the query against the judgements
-        :param query_index: the index of the query
-        :param results: the results of the query
-        :param search_type: the type of search
-        """
-
-        # get the relevant docs
-        relevant_docs = set()
-        for judgement in self.judgements:
-            if judgement[0] == str(query_index):
-                relevant_docs.add(judgement[1])
-
-        # get the retrieved docs
-        retrieved_docs = []
-        if search_type == SearchType.TERM:
-            for doc in results:
-                retrieved_docs.append(doc[1])
-        else:
-            for doc in results:
-                retrieved_docs.append(doc[0])
-
-        # calculate precision, recall and f1-score
-        precision = (
-            len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs)
-            if len(retrieved_docs)
-            else 0
-        )
-        precision_5 = len(relevant_docs.intersection(retrieved_docs[:5])) / 5
-        precision_10 = len(relevant_docs.intersection(retrieved_docs[:10])) / 10
-        recall = (
-            len(relevant_docs.intersection(retrieved_docs)) / len(relevant_docs)
-            if len(relevant_docs)
-            else 0
-        )
-        f1_score = (
-            2 * precision * recall / (precision + recall) if precision + recall else 0
-        )
-
-        # get curve
-
-        if len(retrieved_docs) > 10:
-            ranks = retrieved_docs[:10]
-        else:
-            ranks = retrieved_docs + [-1] * (10 - len(retrieved_docs))
-
-        pi = []
-        ri = []
-        current_relevant = set()
-        for i in range(len(ranks)):
-            if ranks[i] in relevant_docs:
-                current_relevant.add(ranks[i])
-            pi.append(len(current_relevant) / (i + 1))
-            ri.append(len(current_relevant) / len(relevant_docs))
-
-        pj = []
-        rj = [i / 10 for i in range(0, 11)]
-        i = 0
-        current = max(pi)
-        for j in range(len(ranks) + 1):
-            if ri[i] >= rj[j]:
-                pj.append(current)
-            else:
-                while i < len(ri) - 1 and ri[i] < rj[j]:
-                    i += 1
-                if i < 10:
-                    current = max(pi[i:])
-                else:
-                    current = 0
-                pj.append(current)
-        return {
-            "Precision": round(precision, 4),
-            "P@5": round(precision_5, 4),
-            "P@10": round(precision_10, 4),
-            "Recall": round(recall, 4),
-            "F1 score": round(f1_score, 4),
-        }, {"recall": rj, "precision": pj}
-
     def search_in_file(
         self,
         query: str,
         *,
         file_type: FileType,
         search_type: SearchType,
-        matching_form=MatchingType.Scalar,
         **kwargs,
     ):
-        if not query and search_type not in [SearchType.VECTOR, SearchType.PROBABILITY]:
+        if not query and search_type not in [
+            SearchType.VECTOR,
+            SearchType.PROBABILITY,
+            SearchType.LOGIC,
+        ]:
             file_path = (
                 self.inverse_file_path
                 if file_type == FileType.INVERSE
@@ -378,54 +244,9 @@ class TextProcessor:
             return data
         data = []
         match search_type:
-            case SearchType.DOCS:
-                query = [self.stem_word(word) for word in self.tokenize(query)]
-                for doc_number, token, freq, weight in self.file_generator(file_type):
-                    if token in query:
-                        data.append([doc_number, token, freq, weight])
-
-            case SearchType.TERM:
-                query = [self.stem_word(word) for word in self.tokenize(query)]
-                for token, doc_number, freq, weight in self.file_generator(file_type):
-                    if token in query:
-                        data.append([token, doc_number, freq, weight])
-
-            case SearchType.VECTOR:
-                query = [self.stem_word(word) for word in self.tokenize(query)]
-                query = self.remove_stopwords(query)
-                total_weight = defaultdict(list)
-                doc_weights = defaultdict(list)
-                for doc_number, token, freq, weight in self.file_generator(file_type):
-                    doc_weights[doc_number].append(float(weight) ** 2)
-                    if token in query:
-                        total_weight[doc_number].append(float(weight))
-                for doc_number, weights in total_weight.items():
-                    match matching_form:
-                        case MatchingType.Scalar:
-                            weight = sum(weights)
-                        case MatchingType.Cosine:
-                            weight = sum(weights) / (
-                                math.sqrt(len(query))
-                                * math.sqrt(sum(doc_weights[doc_number]))
-                            )
-                        case MatchingType.Jaccard:
-                            weight = sum(weights) / (
-                                len(query) + sum(doc_weights[doc_number]) - sum(weights)
-                            )
-                        case _:
-                            raise Exception("None valid matching formula")
-
-                    data.append([doc_number, round(weight, 4)])
-                data.sort(key=lambda row: row[1], reverse=True)
-
             case search_type.PROBABILITY:
-                query = [self.stem_word(word) for word in self.tokenize(query)]
-                query = self.remove_stopwords(query)
-                tokens = [
-                    self.get_token_by_value(token)
-                    for token in query
-                    if self.get_token_by_value(token)
-                ]
+                query = self.process_text(query.lower())
+                tokens = [self.tokens[token] for token in query if token in self.tokens]
                 k, b = float(kwargs["matching_params"].get("K", 2)), float(
                     kwargs["matching_params"].get("B", 1.5)
                 )
@@ -515,21 +336,25 @@ class TextProcessor:
                 raise Exception("Invalid Search type")
         return data
 
-    def process_text(self, text: str, doc_number: int):
+    def process_text(self, text: str):
         tokens = self.tokenize(text)
-        tokens = self.remove_stopwords(tokens)
-        tokens = self.stem(tokens)
+        return self.stem(tokens)
+
+    def process_doc(self, text: str, doc_number: int):
+        """
+        Process the text
+        :param text:
+        :param doc_number:
+        :return:
+        """
+        tokens = self.process_text(text)
         processed_tokens: dict[str, TextProcessor.Token] = {}
-        for token, freq in self.get_freq_dist(tokens).items():
-            if token not in processed_tokens:
-                processed_tokens[token] = {
-                    "freq": {doc_number: freq},
-                    "docs": [doc_number],
-                    "weight": {doc_number: 0},
-                }
-            else:
-                processed_tokens[token]["freq"][doc_number] = freq
-                processed_tokens[token]["docs"].append(doc_number)
+        for token, freq in FreqDist(tokens).items():
+            processed_tokens[token] = {
+                "freq": {doc_number: freq},
+                "docs": [doc_number],
+                "weight": {doc_number: 0},
+            }
         return processed_tokens
 
     def get_tokens_by_doc(self, doc_number: int):
@@ -543,18 +368,18 @@ class TextProcessor:
         else:
             raise Exception("Invalid doc number")
 
-    def __call__(
-        self,
-        tokenizer: Tokenizer = Tokenizer.SPLIT,
-        stemmer: Stemmer = Stemmer.LANCASTER,
-    ):
-        self.tokenizer = tokenizer
-        self.stemmer = stemmer
+    def process_docs(self):
+        """
+        Process the docs and generate all inverted and descriptor files
+        :return:
+        """
+        for tokenizer in Tokenizer:
+            for stemmer in Stemmer:
+                self.set_processor(tokenizer, stemmer)
+                self.tokens = {}
+                for doc_number, doc in tqdm(enumerate(self.docs, start=1)):
+                    self.add_tokens(self.process_doc(doc, doc_number))
+                for token in self.tokens:
+                    self.calculate_weight(token)
+                self.save()
         self.tokens = {}
-        for i, text in enumerate(self.docs):
-            doc_number = i + 1
-            tokens = self.process_text(text, doc_number)
-            self.add_tokens(tokens)
-        for token in self.tokens:
-            self.calculate_weight(token)
-        self.save()
