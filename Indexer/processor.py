@@ -1,10 +1,10 @@
 import math
 import os
-import re
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path
 from typing import TypedDict
+
 import nltk
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
@@ -57,9 +57,7 @@ class TextProcessor:
     def __init__(
         self,
         documents_dir: Path,
-        results_dir: Path,
-        *,
-        docs_prefix="",
+        results_dir: Path
     ):
         # create results directory if not exists
         results_dir.mkdir(parents=True, exist_ok=True)
@@ -68,7 +66,6 @@ class TextProcessor:
         self.docs: [str] = [
             file.read_text().lower()
             for file in documents_dir.iterdir()
-            if file.suffix == f"{docs_prefix}.txt"
         ]
         self.tokens: dict[str, TextProcessor.Token] = {}
         self.file_path = results_dir
@@ -220,121 +217,6 @@ class TextProcessor:
                     f.write(
                         f"{token} {doc_number} {value['freq'][doc_number]} {value['weight'][doc_number]}\n"
                     )
-
-    def search_in_file(
-        self,
-        query: str,
-        *,
-        file_type: FileType,
-        search_type: SearchType,
-        **kwargs,
-    ):
-        if not query and search_type not in [
-            SearchType.VECTOR,
-            SearchType.PROBABILITY,
-            SearchType.LOGIC,
-        ]:
-            file_path = (
-                self.inverse_file_path
-                if file_type == FileType.INVERSE
-                else self.descriptor_file_path
-            )
-            with open(file_path, "r") as f:
-                data = [line.split() for line in f.readlines()]
-            return data
-        data = []
-        match search_type:
-            case search_type.PROBABILITY:
-                query = self.process_text(query.lower())
-                tokens = [self.tokens[token] for token in query if token in self.tokens]
-                k, b = float(kwargs["matching_params"].get("K", 2)), float(
-                    kwargs["matching_params"].get("B", 1.5)
-                )
-                docs_size = defaultdict(int)
-                for doc in range(1, len(self.docs) + 1):
-                    current_tokens = self.get_tokens_by_doc(doc)
-                    docs_size[doc] = sum(
-                        [token["freq"][doc] for token in current_tokens.values()]
-                    )
-
-                average_doc_size = sum(docs_size.values()) / len(self.docs)
-                rsv = defaultdict(float)
-                for token in tokens:
-                    for doc_number in token["docs"]:
-                        rsv[doc_number] += (
-                            token["freq"][doc_number]
-                            / (
-                                k
-                                * (
-                                    (1 - b)
-                                    + b * (docs_size[doc_number] / average_doc_size)
-                                )
-                                + token["freq"][doc_number]
-                            )
-                        ) * math.log10(
-                            (len(self.docs) - len(token["docs"]) + 0.5)
-                            / (len(token["docs"]) + 0.5)
-                        )
-
-                for doc_number, weight in rsv.items():
-                    data.append([str(doc_number), round(weight, 4)])
-                data.sort(key=lambda row: row[1], reverse=True)
-            case search_type.LOGIC:
-
-                def is_valid_query(test_query):
-                    word_pattern = r"\w+(?:[-/,%@\.]\w+)*%?"
-                    test_query = test_query.strip()
-                    if test_query in ["AND", "OR", "NOT"]:
-                        return False
-                    return bool(
-                        re.match(
-                            rf"^(NOT\s+)?(?!AND|OR|NOT){word_pattern}(?:\s+(AND|OR)\s+(NOT\s+)?(?!AND|OR|NOT){word_pattern})*$",
-                            test_query,
-                        )
-                    )
-
-                if not is_valid_query(query):
-                    return data
-
-                must_parts = [part.strip() for part in query.strip().split("OR")]
-                results = defaultdict(bool)
-                for part in must_parts:
-                    part = part.split("AND")
-                    positive = [
-                        self.stem_word(term.lower())
-                        for term in part
-                        if not term.strip().startswith("NOT")
-                    ]
-                    negative = [
-                        self.stem_word(term.strip().split()[-1])
-                        for term in part
-                        if term.strip().startswith("NOT")
-                    ]
-                    for doc_id in range(1, len(self.docs) + 1):
-                        tokens = self.get_tokens_by_doc(doc_id)
-                        positive_result = 0
-                        negative_result = 0
-                        for word in positive:
-                            for token in tokens:
-                                if token == word:
-                                    positive_result += 1
-
-                        for word in negative:
-                            for token in tokens:
-                                if token == word:
-                                    negative_result += 1
-                        results[doc_id] = results.get(doc_id, False) or (
-                            positive_result == len(positive) and negative_result == 0
-                        )
-
-                for doc in results.keys():
-                    if results[doc]:
-                        data.append([str(doc), results[doc]])
-                data.sort(key=lambda row: row[0])
-
-            case _:
-                raise Exception("Invalid Search type")
-        return data
 
     def process_text(self, text: str):
         tokens = self.tokenize(text)
