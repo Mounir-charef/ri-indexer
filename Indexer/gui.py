@@ -327,7 +327,6 @@ class MyWindow(QMainWindow):
         self.table.setColumnCount(len(options["row_labels"]))
         self.table.setHorizontalHeaderLabels(options["row_labels"])
 
-        print(options)
         results = self.processor(query, **options)
 
         self.table.setRowCount(len(results))

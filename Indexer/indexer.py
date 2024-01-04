@@ -1,6 +1,8 @@
 import math
+import re
 from collections import defaultdict
 from pathlib import Path
+
 from Indexer.processor import (
     TextProcessor,
     FileType,
@@ -13,13 +15,13 @@ from Indexer.processor import (
 
 class Indexer:
     def __init__(
-        self,
-        documents_dir: Path,
-        results_dir: Path,
-        *,
-        judgements_path: Path,
-        queries_path: Path,
-        docs_prefix="",
+            self,
+            documents_dir: Path,
+            results_dir: Path,
+            *,
+            judgements_path: Path,
+            queries_path: Path,
+            docs_prefix="",
     ):
         self.processor = TextProcessor(
             documents_dir,
@@ -44,6 +46,16 @@ class Indexer:
                 return [line.strip() for line in f.readlines()]
         except FileNotFoundError:
             return []
+
+    def get_freq_by_doc(self):
+        """
+            Get the frequency of each token in each document using the descriptor file and regex
+        :return: a dictionary of the form {doc_number: {token: freq}}
+        """
+        freq_by_doc = defaultdict(dict)
+        for doc_number, token, freq, _ in self.file_generator(FileType.DESCRIPTOR):
+            freq_by_doc[doc_number][token] = int(freq)
+        return freq_by_doc
 
     def file_generator(self, file_type: FileType):
         file_path = (
@@ -135,15 +147,15 @@ class Indexer:
         }, {"recall": rj, "precision": pj}
 
     def __call__(
-        self,
-        query: str,
-        search_type: SearchType,
-        *,
-        file_type: FileType = FileType.INVERSE,
-        tokenizer: Tokenizer = Tokenizer.NLTK,
-        stemmer: Stemmer = Stemmer.PORTER,
-        matching_type: MatchingType = MatchingType.Scalar,
-        **kwargs,
+            self,
+            query: str,
+            search_type: SearchType,
+            *,
+            file_type: FileType = FileType.INVERSE,
+            tokenizer: Tokenizer = Tokenizer.NLTK,
+            stemmer: Stemmer = Stemmer.PORTER,
+            matching_type: MatchingType = MatchingType.Scalar,
+            **kwargs,
     ):
         self.processor.set_processor(tokenizer, stemmer)
         if not query and search_type not in [
@@ -191,18 +203,90 @@ class Indexer:
                             weight = sum(weights)
                         case MatchingType.Cosine:
                             weight = sum(weights) / (
-                                math.sqrt(len(query))
-                                * math.sqrt(sum(doc_weights[doc_number]))
+                                    math.sqrt(len(query))
+                                    * math.sqrt(sum(doc_weights[doc_number]))
                             )
                         case MatchingType.Jaccard:
                             weight = sum(weights) / (
-                                len(query) + sum(doc_weights[doc_number]) - sum(weights)
+                                    len(query) + sum(doc_weights[doc_number]) - sum(weights)
                             )
                         case _:
                             raise Exception("None valid matching formula")
                     results.append([doc_number, round(weight, 4)])
                 results.sort(key=lambda row: row[1], reverse=True)
 
+            case SearchType.PROBABILITY:
+                query = self.processor.process_text(query.lower())
+                k, b = float(kwargs["matching_params"].get("K", 2)), float(
+                    kwargs["matching_params"].get("B", 1.5)
+                )
+                freq_by_doc = self.get_freq_by_doc()
+                docs_size = {doc_number: sum(freq_by_doc[doc_number].values()) for doc_number in freq_by_doc}
+                average_doc_size = sum(docs_size.values()) / len(docs_size)
+                rsv = defaultdict(float)
+                num_of_docs = len(self.processor.docs)
+                num_doc_with_token = defaultdict(int)
+                for doc_number in freq_by_doc:
+                    for token in query:
+                        if token in freq_by_doc[doc_number]:
+                            num_doc_with_token[token] += 1
+                for doc_number in freq_by_doc:
+                    for token in query:
+                        if token in freq_by_doc[doc_number]:
+                            rsv[doc_number] += math.log10(
+                                (num_of_docs - num_doc_with_token[token] + 0.5) / (num_doc_with_token[token] + 0.5)
+                            ) * (
+                                    (freq_by_doc[doc_number][token])
+                                    / (
+                                            freq_by_doc[doc_number][token]
+                                            + k
+                                            * (1 - b + b * docs_size[doc_number] / average_doc_size)
+                                    )
+                            )
+                for doc_number, weight in rsv.items():
+                    results.append([doc_number, round(weight, 4)])
+                results.sort(key=lambda row: row[1], reverse=True)
+
+            case SearchType.LOGIC:
+                def is_valid_query(test_query):
+                    word_pattern = r"\w+(?:[-/,%@\.]\w+)*%?"
+                    test_query = test_query.strip()
+                    if test_query in ["AND", "OR", "NOT"]:
+                        return False
+                    return bool(
+                        re.match(
+                            rf"^(NOT\s+)?(?!AND|OR|NOT){word_pattern}(?:\s+(AND|OR)\s+(NOT\s+)?(?!AND|OR|NOT){word_pattern})*$",
+                            test_query,
+                        )
+                    )
+
+                if not is_valid_query(query):
+                    return results
+
+                or_parts = [part.strip() for part in query.strip().split("OR")]
+                bool_results = defaultdict(bool)
+                tokens_in_docs = defaultdict(set)
+                for doc_number, token, _, _ in self.file_generator(file_type):
+                    tokens_in_docs[doc_number].add(token)
+                for part in or_parts:
+                    must_part = part.split("AND")
+                    positive = [
+                        self.processor.stem_word(term.lower())
+                        for term in must_part
+                        if not term.strip().startswith("NOT")
+                    ]
+                    negative = [
+                        self.processor.stem_word(term.strip().split()[-1])
+                        for term in must_part
+                        if term.strip().startswith("NOT")
+                    ]
+                    for doc_number, tokens in tokens_in_docs.items():
+                        if all(token in tokens for token in positive) and all(
+                                token not in tokens for token in negative
+                        ):
+                            bool_results[doc_number] = True
+
+                results = list(sorted(bool_results.items(), key=lambda x: x[0]))
             case _:
                 raise ValueError(f"Invalid search type: {search_type}")
         return results
