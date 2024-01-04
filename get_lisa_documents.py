@@ -14,7 +14,7 @@ def main():
         output_dir.mkdir()
     document_id_regex = re.compile(r"Document\s+(\d+)")
 
-    for current_file in list(lisa_dir.iterdir())[:1]:
+    for current_file in lisa_dir.iterdir():
         with open(current_file, "r") as file:
             content = file.readlines()
         current_document = []

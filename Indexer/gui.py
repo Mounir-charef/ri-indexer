@@ -1,13 +1,12 @@
 from PyQt5.QtCore import Qt
-
-from Indexer.processor import (
+from Indexer.indexer import (
     FileType,
     SearchType,
     MatchingType,
     Stemmer,
     Tokenizer,
+    Indexer,
 )
-from Indexer.indexer import Indexer
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QMainWindow,
@@ -81,9 +80,9 @@ class PlotWidget(QWidget):
 
 
 class MyWindow(QMainWindow):
-    def __init__(self, processor: Indexer):
+    def __init__(self, indexer: Indexer):
         super().__init__()
-        self.processor = processor
+        self.indexer = indexer
 
         self.setWindowTitle("RI Indexer")
         self.setStyleSheet(
@@ -151,7 +150,7 @@ class MyWindow(QMainWindow):
         self.select_queries.stateChanged.connect(self.updateSearchBar)
         self.queries_dataset = QSpinBox()
         self.queries_dataset.setMinimum(1)
-        self.queries_dataset.setMaximum(len(self.processor.queries))
+        self.queries_dataset.setMaximum(len(self.indexer.queries))
         self.queries_dataset.valueChanged.connect(self.updateSearchBarContent)
         queries_dataset_layout.addWidget(self.select_queries)
         queries_dataset_layout.addWidget(self.queries_dataset)
@@ -306,7 +305,7 @@ class MyWindow(QMainWindow):
             self.search_bar.setText(self.get_test_query())
 
     def get_test_query(self):
-        return self.processor.queries[self.queries_dataset.value() - 1]
+        return self.indexer.queries[self.queries_dataset.value() - 1]
 
     def search(self):
         query = self.search_bar.text()
@@ -321,13 +320,21 @@ class MyWindow(QMainWindow):
             options = FILTERS_PARAMS[index_type]
 
         # Processing parameters
-        options["stemmer"] = Stemmer.PORTER if self.porter_stemmer_checkbox.isChecked() else Stemmer.LANCASTER
-        options["tokenizer"] = Tokenizer.NLTK if self.tokenization_checkbox.isChecked() else Tokenizer.SPLIT
+        options["stemmer"] = (
+            Stemmer.PORTER
+            if self.porter_stemmer_checkbox.isChecked()
+            else Stemmer.LANCASTER
+        )
+        options["tokenizer"] = (
+            Tokenizer.NLTK
+            if self.tokenization_checkbox.isChecked()
+            else Tokenizer.SPLIT
+        )
 
         self.table.setColumnCount(len(options["row_labels"]))
         self.table.setHorizontalHeaderLabels(options["row_labels"])
 
-        results = self.processor(query, **options)
+        results = self.indexer(query, **options)
 
         self.table.setRowCount(len(results))
         for row_index, row_data in enumerate(results):
@@ -343,7 +350,7 @@ class MyWindow(QMainWindow):
             self.evaluate_results(results, options["search_type"])
 
     def evaluate_results(self, results, search_type):
-        evaluation_results, precision_recall_curve_data = self.processor.evaluate(
+        evaluation_results, precision_recall_curve_data = self.indexer.evaluate(
             self.queries_dataset.value(),
             results,
             search_type=search_type,

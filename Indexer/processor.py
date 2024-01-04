@@ -377,7 +377,9 @@ class TextProcessor:
             for stemmer in Stemmer:
                 self.set_processor(tokenizer, stemmer)
                 self.tokens = {}
-                for doc_number, doc in enumerate(tqdm(self.docs, desc="Processing docs"), start=1):
+                for doc_number, doc in enumerate(
+                    tqdm(self.docs, desc="Processing docs"), start=1
+                ):
                     self.add_tokens(self.process_doc(doc, doc_number))
                 for token in self.tokens:
                     self.calculate_weight(token)
