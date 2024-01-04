@@ -343,7 +343,7 @@ class TextProcessor:
             if ri[i] >= rj[j]:
                 pj.append(current)
             else:
-                while i < len(ri) and ri[i] < rj[j]:
+                while i < len(ri) - 1 and ri[i] < rj[j]:
                     i += 1
                 if i < 10:
                     current = max(pi[i:])

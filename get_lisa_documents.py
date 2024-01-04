@@ -4,12 +4,17 @@ import re
 
 def main():
     current_dir = Path.cwd()
-    lisa_dir = current_dir / "lisa"
+    lisa_dir = current_dir / "lisa" / "collection"
     output_dir = current_dir / "lisa_collection"
-    output_dir.mkdir(exist_ok=True)
+    # create output dir if it doesn't exist or overwrite it
+    if output_dir.exists():
+        for file in output_dir.iterdir():
+            file.unlink()
+    else:
+        output_dir.mkdir()
     document_id_regex = re.compile(r"Document\s+(\d+)")
 
-    for current_file in lisa_dir.iterdir():
+    for current_file in list(lisa_dir.iterdir())[:1]:
         with open(current_file, "r") as file:
             content = file.readlines()
         current_document = []
