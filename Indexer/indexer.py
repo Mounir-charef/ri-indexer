@@ -233,8 +233,8 @@ class Indexer:
                 rsv = defaultdict(float)
                 num_of_docs = len(self.processor.docs)
                 num_doc_with_token = defaultdict(int)
-                for doc_number in freq_by_doc:
-                    for token in query:
+                for token in set(query):
+                    for doc_number in freq_by_doc:
                         if token in freq_by_doc[doc_number]:
                             num_doc_with_token[token] += 1
                 for doc_number in freq_by_doc:
