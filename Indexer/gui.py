@@ -188,7 +188,6 @@ class MyWindow(QMainWindow):
         self.indexer_radio_group = QButtonGroup()
         self.indexer_radio_group.addButton(self.indexer_docs_radio)
         self.indexer_radio_group.addButton(self.indexer_terms_radio)
-        self.indexer_radio_group.buttonClicked.connect(self.search)
         indexer_layout.addWidget(self.indexer_docs_radio)
         indexer_layout.addWidget(self.indexer_terms_radio)
         indexer_group.setLayout(indexer_layout)
@@ -269,6 +268,7 @@ class MyWindow(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
         self.center()
+        self.search()
 
     def center(self):
         qr = self.frameGeometry()
