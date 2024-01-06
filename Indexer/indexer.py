@@ -32,7 +32,7 @@ class Indexer:
         self.queries_path = queries_path
 
     @property
-    def judgements(self) -> list[[str, str]]:
+    def judgements(self) -> list[list[str, str]]:
         try:
             with open(self.judgements_path, "r") as f:
                 return [line.split() for line in f.readlines()]
@@ -97,14 +97,16 @@ class Indexer:
             else 0
         )
         precision_5 = len(relevant_docs.intersection(retrieved_docs[:5])) / 5
-        precision_10 = len(relevant_docs.intersection(retrieved_docs[:10])) / 10
+        precision_10 = len(relevant_docs.intersection(
+            retrieved_docs[:10])) / 10
         recall = (
             len(relevant_docs.intersection(retrieved_docs)) / len(relevant_docs)
             if len(relevant_docs)
             else 0
         )
         f1_score = (
-            2 * precision * recall / (precision + recall) if precision + recall else 0
+            2 * precision * recall /
+            (precision + recall) if precision + recall else 0
         )
 
         # get curve
@@ -122,7 +124,8 @@ class Indexer:
                 current_relevant.add(ranks[i])
             pi.append(len(current_relevant) / (i + 1))
             ri.append(
-                len(current_relevant) / len(relevant_docs) if len(relevant_docs) else 0
+                len(current_relevant) /
+                len(relevant_docs) if len(relevant_docs) else 0
             )
 
         pj = []
@@ -212,7 +215,8 @@ class Indexer:
                             )
                         case MatchingType.Jaccard:
                             weight = sum(weights) / (
-                                len(query) + sum(doc_weights[doc_number]) - sum(weights)
+                                len(query) +
+                                sum(doc_weights[doc_number]) - sum(weights)
                             )
                         case _:
                             raise Exception("None valid matching formula")
@@ -251,7 +255,9 @@ class Indexer:
                                     * (
                                         1
                                         - b
-                                        + b * docs_size[doc_number] / average_doc_size
+                                        + b *
+                                        docs_size[doc_number] /
+                                        average_doc_size
                                     )
                                 )
                             )

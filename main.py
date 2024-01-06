@@ -10,23 +10,7 @@ DIR_PATH = current_file.parent
 
 
 def init_indexer():
-    collection_dir = DIR_PATH / "lisa_collection"
-    evaluation_dir = DIR_PATH / "lisa_eval"
-    judgement = evaluation_dir / "Judgements.txt"
-    queries = evaluation_dir / "Queries.txt"
 
-    results_dir = DIR_PATH / "results"
-
-    return Indexer(
-        documents_dir=collection_dir,
-        results_dir=results_dir,
-        judgements_path=judgement,
-        queries_path=queries,
-        doc_prefix="Doc",
-    )
-
-
-def main():
     parser = argparse.ArgumentParser(description="Indexer application")
     parser.add_argument(
         "-r",
@@ -34,14 +18,31 @@ def main():
         action="store_true",
         help="Regenerate index files if this flag is provided",
     )
-
     args = parser.parse_args()
 
-    indexer = init_indexer()
+    collection_dir = DIR_PATH / "lisa_collection"
+    evaluation_dir = DIR_PATH / "lisa_eval"
+    judgement = evaluation_dir / "Judgements.txt"
+    queries = evaluation_dir / "Queries.txt"
+
+    results_dir = DIR_PATH / "results"
+
+    indexer = Indexer(
+        documents_dir=collection_dir,
+        results_dir=results_dir,
+        judgements_path=judgement,
+        queries_path=queries,
+        doc_prefix="Doc",
+    )
 
     if args.reprocess:
         indexer.processor.process_docs()
 
+    return indexer
+
+
+def main():
+    indexer = init_indexer()
     app = QApplication(sys.argv)
     window = MyWindow(indexer)
     window.show()

@@ -4,7 +4,7 @@ from collections import defaultdict
 from enum import Enum
 from pathlib import Path
 from typing import TypedDict
-
+import gc
 import nltk
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
@@ -66,6 +66,13 @@ class TextProcessor:
         ]
         self.tokens: dict[str, TextProcessor.Token] = {}
         self.file_path = results_dir
+        self._tokens_by_doc = defaultdict(dict)
+
+    def cleanup(self):
+        self._tokenizer = None
+        self._stemmer = None
+        self.tokens = {}
+        self.file_path = None
         self._tokens_by_doc = defaultdict(dict)
 
     @property
@@ -263,4 +270,6 @@ class TextProcessor:
                 for token in self.tokens:
                     self.calculate_weight(token)
                 self.save()
-        self.tokens = {}
+
+        self.cleanup()
+        gc.collect()
