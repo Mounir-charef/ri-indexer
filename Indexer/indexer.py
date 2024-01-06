@@ -32,7 +32,7 @@ class Indexer:
         self.queries_path = queries_path
 
     @property
-    def judgements(self) -> list[list[str, str]]:
+    def judgements(self) -> list[list[str]]:
         try:
             with open(self.judgements_path, "r") as f:
                 return [line.split() for line in f.readlines()]

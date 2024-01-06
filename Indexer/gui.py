@@ -331,10 +331,13 @@ class MyWindow(QMainWindow):
             else Tokenizer.SPLIT
         )
 
+        results = self.indexer(query, **options)
+
+        # for optimazing the table I started by setting the number of columns to 0
+        self.table.setColumnCount(0)
+        # then I set the number of columns to the number of row labels
         self.table.setColumnCount(len(options["row_labels"]))
         self.table.setHorizontalHeaderLabels(options["row_labels"])
-
-        results = self.indexer(query, **options)
 
         self.table.setRowCount(len(results))
         for row_index, row_data in enumerate(results):
