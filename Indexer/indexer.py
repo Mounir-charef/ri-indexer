@@ -223,8 +223,8 @@ class Indexer:
 
             case SearchType.PROBABILITY:
                 query = self.processor.process_text(query.lower())
-                k, b = float(kwargs["matching_params"].get("K", 2)), float(
-                    kwargs["matching_params"].get("B", 1.5)
+                k, b = float(kwargs["matching_params"]["K"]), float(
+                    kwargs["matching_params"]["B"]
                 )
                 freq_by_doc = self.get_freq_by_doc
                 docs_size = {
