@@ -24,7 +24,7 @@ def main():
             if document_id_regex.match(line):
                 current_doc_id = document_id_regex.match(line).group(1)
             elif line.startswith("*") and line.endswith("*"):
-                with open(output_dir / f"Doc{current_doc_id}.txt", "w") as file:
+                with open(output_dir / f"D{current_doc_id}.txt", "w") as file:
                     file.writelines(" ".join(current_document))
                 current_document = []
             else:

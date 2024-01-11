@@ -58,12 +58,10 @@ class TextProcessor:
         results_dir.mkdir(parents=True, exist_ok=True)
         self._tokenizer: Tokenizer | None = None
         self._stemmer: Stemmer | None = None
-        self.docs: [str] = [
-            file.read_text().lower()
-            for file in sorted(
-                documents_dir.iterdir(), key=lambda x: int(x.stem.split(doc_prefix)[1])
-            )
-        ]
+        self.docs: dict[int, str] = {
+            int(file.stem[len(doc_prefix) :]): file.read_text().lower()
+            for file in documents_dir.iterdir()
+        }
         self.tokens: dict[str, TextProcessor.Token] = {}
         self.file_path = results_dir
         self._tokens_by_doc = defaultdict(dict)
@@ -71,9 +69,8 @@ class TextProcessor:
     def cleanup(self):
         self._tokenizer = None
         self._stemmer = None
-        self.tokens = {}
-        self.file_path = None
-        self._tokens_by_doc = defaultdict(dict)
+        self.tokens = None
+        self._tokens_by_doc = None
 
     @property
     def tokenizer(self):
@@ -199,7 +196,9 @@ class TextProcessor:
             case "split":
                 return text.split()
             case "nltk":
-                return nltk.RegexpTokenizer(r"\w+(?:[-/,%@\.]\w+)*%?").tokenize(text)
+                return nltk.RegexpTokenizer(
+                    r"(?:[A-Za-z]\.)+|[A-Za-z]+[\-@]\d+(?:\.\d+)?|\d+[A-Za-z]+|\d+(?:[\.\,]\d+)?%?|\w+(?:[\-/]\w+)*"
+                ).tokenize(text)
             case _:
                 raise Exception("Invalid method")
 
@@ -263,9 +262,7 @@ class TextProcessor:
             for stemmer in Stemmer:
                 self.set_processor(tokenizer, stemmer)
                 self.tokens = {}
-                for doc_number, doc in enumerate(
-                    tqdm(self.docs, desc="Processing docs"), start=1
-                ):
+                for doc_number, doc in tqdm(self.docs.items(), desc="Processing docs"):
                     self.add_tokens(self.process_doc(doc, doc_number))
                 for token in self.tokens:
                     self.calculate_weight(token)
