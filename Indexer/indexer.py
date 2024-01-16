@@ -143,11 +143,11 @@ class Indexer:
                     current = 0
                 pj.append(current)
         return {
-            "Precision": round(precision, 4),
-            "P@5": round(precision_5, 4),
-            "P@10": round(precision_10, 4),
-            "Recall": round(recall, 4),
-            "F1 score": round(f1_score, 4),
+            "Precision": f'{precision:.2%}',
+            "P@5": f'{precision_5:.2%}',
+            "P@10": f'{precision_10:.2%}',
+            "Recall": f'{recall:.2%}',
+            "F1 score": f'{f1_score:.2%}',
         }, {"recall": rj, "precision": pj}
 
     def __call__(
