@@ -76,6 +76,7 @@ class PlotWidget(QWidget):
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.plot(data_x, data_y)
+        ax.scatter(data_x, data_y)
         self.canvas.draw()
 
 
