@@ -119,8 +119,8 @@ class Indexer:
                 current_relevant.add(ranks[i])
             pi.append(len(current_relevant) / (i + 1))
             ri.append(
-                len(current_relevant) / len(relevant_docs.intersection(retrieved_docs))
-                if len(relevant_docs.intersection(retrieved_docs))
+                len(current_relevant) / len(relevant_docs.intersection(ranks))
+                if len(relevant_docs.intersection(ranks))
                 else 0
             )
 

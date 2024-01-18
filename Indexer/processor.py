@@ -13,8 +13,8 @@ from tqdm import tqdm
 
 
 class Tokenizer(Enum):
-    SPLIT = "split"
     NLTK = "nltk"
+    SPLIT = "split"
 
 
 class Stemmer(Enum):
@@ -127,17 +127,17 @@ class TextProcessor:
             if token not in self.tokens:
                 self.tokens[token] = value
             else:
-                self.tokens[token]["docs"] += value["docs"]
-                for doc_number in value["freq"]:
-                    if doc_number not in self.tokens[token]["freq"]:
-                        self.tokens[token]["freq"][doc_number] = value["freq"][
-                            doc_number
-                        ]
-                    else:
-                        self.tokens[token]["freq"][doc_number] += value["freq"][
-                            doc_number
-                        ]
-            self._tokens_by_doc[value["docs"][0]][token] = value
+                self.tokens[token]["docs"].append(value["docs"][0])
+                if value["docs"][0] not in self.tokens[token]["freq"]:
+                    self.tokens[token]["freq"][value["docs"][0]] = value["freq"][
+                        value["docs"][0]
+                    ]
+                else:
+                    self.tokens[token]["freq"][value["docs"][0]] += value["freq"][
+                        value["docs"][0]
+                    ]
+            # Add token to the tokens by doc
+            self._tokens_by_doc[value["docs"][0]][token] = self.tokens[token]
 
     def calculate_weight(self, token_key: str):
         """
@@ -151,7 +151,7 @@ class TextProcessor:
             max_freq = max(
                 [
                     token["freq"][doc_number]
-                    for token in self.get_tokens_by_doc(doc_number).values()
+                    for token in self.tokens_by_doc[doc_number].values()
                 ]
             )
             token["weight"][doc_number] = round(
@@ -241,17 +241,6 @@ class TextProcessor:
                 "weight": {doc_number: 0},
             }
         return processed_tokens
-
-    def get_tokens_by_doc(self, doc_number: int):
-        """
-        Get tokens by doc number
-        :param doc_number:
-        :return:
-        """
-        if doc_number in self.tokens_by_doc:
-            return self.tokens_by_doc[doc_number]
-        else:
-            raise Exception("Invalid doc number")
 
     def process_docs(self):
         """
