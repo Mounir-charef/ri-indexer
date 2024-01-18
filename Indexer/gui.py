@@ -24,8 +24,8 @@ from PyQt5.QtWidgets import (
     QLabel,
     QComboBox,
     QSpinBox,
+    QDoubleSpinBox,
 )
-from PyQt5.QtGui import QDoubleValidator
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -134,7 +134,6 @@ class MyWindow(QMainWindow):
         self.setGeometry(600, 600, 1400, 900)
 
         layout = QVBoxLayout()
-        float_validator = QDoubleValidator()
 
         # Search Section
         search_layout = QHBoxLayout()
@@ -223,23 +222,33 @@ class MyWindow(QMainWindow):
         self.models_radio_group.addButton(self.probability_model_radio)
         matching_layout.addWidget(self.probability_model_radio)
 
-        default_k_value = str(
+        # K Parameter
+        k_label = QLabel("K Parameter:")
+        self.k_parameter_edit = QDoubleSpinBox()
+        self.k_parameter_edit.setRange(1.2, 2.0)
+        self.k_parameter_edit.setSingleStep(0.05)
+        self.k_parameter_edit.setValue(
             FILTERS_PARAMS["Probability Model"]["matching_params"]["K"]
         )
-        self.k_parameter_edit = QLineEdit(default_k_value)
-        self.k_parameter_edit.setValidator(float_validator)
-        self.k_parameter_edit.setPlaceholderText("Enter K value")
         self.k_parameter_edit.textChanged.connect(self.update_k_parameter)
+
+        matching_layout.addWidget(k_label)
         matching_layout.addWidget(self.k_parameter_edit)
 
-        default_b_value = str(
+        # B Parameter
+        b_label = QLabel("B Parameter:")
+        self.b_parameter_edit = QDoubleSpinBox()
+        self.b_parameter_edit.setRange(0.5, 0.75)
+        self.b_parameter_edit.setSingleStep(0.05)
+        self.b_parameter_edit.setValue(
             FILTERS_PARAMS["Probability Model"]["matching_params"]["B"]
         )
-        self.b_parameter_edit = QLineEdit(default_b_value)
-        self.b_parameter_edit.setValidator(float_validator)
-        self.b_parameter_edit.setPlaceholderText("Enter B value")
         self.b_parameter_edit.textChanged.connect(self.update_b_parameter)
+
+        matching_layout.addWidget(b_label)
         matching_layout.addWidget(self.b_parameter_edit)
+
+        self.setLayout(matching_layout)
 
         self.logic_model_radio = QRadioButton("Logic Model")
         self.models_radio_group.addButton(self.logic_model_radio)
@@ -278,16 +287,16 @@ class MyWindow(QMainWindow):
 
     def update_k_parameter(self):
         try:
-            FILTERS_PARAMS["Probability Model"]["matching_params"]["K"] = float(
-                self.k_parameter_edit.text()
+            FILTERS_PARAMS["Probability Model"]["matching_params"]["K"] = round(
+                self.k_parameter_edit.value(), 2
             )
         except ValueError:
             pass
 
     def update_b_parameter(self):
         try:
-            FILTERS_PARAMS["Probability Model"]["matching_params"]["B"] = float(
-                self.b_parameter_edit.text()
+            FILTERS_PARAMS["Probability Model"]["matching_params"]["B"] = round(
+                self.b_parameter_edit.value(), 2
             )
         except ValueError:
             pass

@@ -16,13 +16,13 @@ from Indexer.processor import (
 
 class Indexer:
     def __init__(
-            self,
-            documents_dir: Path,
-            results_dir: Path,
-            *,
-            judgements_path: Path,
-            queries_path: Path,
-            doc_prefix: str = "D",
+        self,
+        documents_dir: Path,
+        results_dir: Path,
+        *,
+        judgements_path: Path,
+        queries_path: Path,
+        doc_prefix: str = "D",
     ):
         self.processor = TextProcessor(
             documents_dir,
@@ -143,23 +143,23 @@ class Indexer:
                     current = 0
                 pj.append(current)
         return {
-            "Precision": f'{precision:.2%}',
-            "P@5": f'{precision_5:.2%}',
-            "P@10": f'{precision_10:.2%}',
-            "Recall": f'{recall:.2%}',
-            "F1 score": f'{f1_score:.2%}',
+            "Precision": f"{precision:.2%}",
+            "P@5": f"{precision_5:.2%}",
+            "P@10": f"{precision_10:.2%}",
+            "Recall": f"{recall:.2%}",
+            "F1 score": f"{f1_score:.2%}",
         }, {"recall": rj, "precision": pj}
 
     def __call__(
-            self,
-            query: str,
-            search_type: SearchType,
-            *,
-            file_type: FileType = FileType.INVERSE,
-            tokenizer: Tokenizer = Tokenizer.NLTK,
-            stemmer: Stemmer = Stemmer.PORTER,
-            matching_type: MatchingType = MatchingType.Scalar,
-            **kwargs,
+        self,
+        query: str,
+        search_type: SearchType,
+        *,
+        file_type: FileType = FileType.INVERSE,
+        tokenizer: Tokenizer = Tokenizer.NLTK,
+        stemmer: Stemmer = Stemmer.PORTER,
+        matching_type: MatchingType = MatchingType.Scalar,
+        **kwargs,
     ):
         self.processor.set_processor(tokenizer, stemmer)
         if not query and search_type not in [
@@ -209,12 +209,12 @@ class Indexer:
                             weight = sum(weights)
                         case MatchingType.Cosine:
                             weight = sum(weights) / (
-                                    math.sqrt(len(query))
-                                    * math.sqrt(sum(doc_weights[doc_number]))
+                                math.sqrt(len(query))
+                                * math.sqrt(sum(doc_weights[doc_number]))
                             )
                         case MatchingType.Jaccard:
                             weight = sum(weights) / (
-                                    len(query) + sum(doc_weights[doc_number]) - sum(weights)
+                                len(query) + sum(doc_weights[doc_number]) - sum(weights)
                             )
                         case _:
                             raise Exception("None valid matching formula")
@@ -223,9 +223,8 @@ class Indexer:
 
             case SearchType.PROBABILITY:
                 query = self.processor.process_text(query.lower())
-                k, b = float(kwargs["matching_params"]["K"]), float(
-                    kwargs["matching_params"]["B"]
-                )
+                k, b = kwargs["matching_params"]["K"], kwargs["matching_params"]["B"]
+
                 freq_by_doc = self.get_freq_by_doc
                 docs_size = {
                     doc_number: sum(freq_by_doc[doc_number].values())
@@ -246,17 +245,17 @@ class Indexer:
                                 (num_of_docs - num_doc_with_token[token] + 0.5)
                                 / (num_doc_with_token[token] + 0.5)
                             ) * (
-                                                       (freq_by_doc[doc_number][token])
-                                                       / (
-                                                               freq_by_doc[doc_number][token]
-                                                               + k
-                                                               * (
-                                                                       1
-                                                                       - b
-                                                                       + b * docs_size[doc_number] / average_doc_size
-                                                               )
-                                                       )
-                                               )
+                                (freq_by_doc[doc_number][token])
+                                / (
+                                    freq_by_doc[doc_number][token]
+                                    + k
+                                    * (
+                                        1
+                                        - b
+                                        + b * docs_size[doc_number] / average_doc_size
+                                    )
+                                )
+                            )
                 for doc_number, weight in rsv.items():
                     results.append([doc_number, round(weight, 4)])
                 results.sort(key=lambda row: row[1], reverse=True)
@@ -297,7 +296,7 @@ class Indexer:
                     ]
                     for doc_number, tokens in tokens_in_docs.items():
                         if all(token in tokens for token in positive) and all(
-                                token not in tokens for token in negative
+                            token not in tokens for token in negative
                         ):
                             bool_results[doc_number] = True
 
