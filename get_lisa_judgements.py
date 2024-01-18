@@ -1,4 +1,8 @@
 from pathlib import Path
+import re
+
+# check if a line has only numbers and whitespace
+number_regex = re.compile(r"^\d+(\s\d+)*$")
 
 
 def main():
@@ -21,8 +25,11 @@ def main():
 
         if line.startswith("Query"):
             current_query = line.split()[1]
-        elif "Relevant Refs" in line:
-            continue
+        elif number_regex.match(line):
+            doc_ids = line.split()
+            for doc_id in doc_ids:
+                with open(output_file, "a") as file:
+                    file.write(f"{current_query} {doc_id}\n")
         elif line.endswith("-1"):
             *doc_ids, _ = line.split()
             for doc_id in doc_ids:

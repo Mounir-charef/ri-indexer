@@ -2,7 +2,6 @@ import math
 import re
 from collections import defaultdict
 from pathlib import Path
-from functools import cached_property
 
 from Indexer.processor import (
     TextProcessor,
@@ -48,7 +47,6 @@ class Indexer:
         except FileNotFoundError:
             return []
 
-    @cached_property
     def get_freq_by_doc(self):
         """
             Get the frequency of each token in each document using the descriptor file and regex
@@ -76,7 +74,6 @@ class Indexer:
         :param results: the results of the query
         :param search_type: the type of search
         """
-
         # get the relevant docs
         relevant_docs = set()
         for judgement in self.judgements:
@@ -91,7 +88,6 @@ class Indexer:
         else:
             for doc in results:
                 retrieved_docs.append(doc[0])
-
         # calculate precision, recall and f1-score
         precision = (
             len(relevant_docs.intersection(retrieved_docs)) / len(retrieved_docs)
@@ -115,7 +111,6 @@ class Indexer:
             ranks = retrieved_docs[:10]
         else:
             ranks = retrieved_docs + [-1] * (10 - len(retrieved_docs))
-
         pi = []
         ri = []
         current_relevant = set()
@@ -124,7 +119,9 @@ class Indexer:
                 current_relevant.add(ranks[i])
             pi.append(len(current_relevant) / (i + 1))
             ri.append(
-                len(current_relevant) / len(relevant_docs) if len(relevant_docs) else 0
+                len(current_relevant) / len(relevant_docs.intersection(retrieved_docs))
+                if len(relevant_docs.intersection(retrieved_docs))
+                else 0
             )
 
         pj = []
@@ -194,7 +191,7 @@ class Indexer:
                 results.sort(key=lambda row: row[0])
 
             case SearchType.VECTOR:
-                query = self.processor.process_text(query.lower())
+                query = set(self.processor.process_text(query.lower()))
                 total_weight = defaultdict(list)
                 doc_weights = defaultdict(list)
 
@@ -225,7 +222,7 @@ class Indexer:
                 query = self.processor.process_text(query.lower())
                 k, b = kwargs["matching_params"]["K"], kwargs["matching_params"]["B"]
 
-                freq_by_doc = self.get_freq_by_doc
+                freq_by_doc = self.get_freq_by_doc()
                 docs_size = {
                     doc_number: sum(freq_by_doc[doc_number].values())
                     for doc_number in freq_by_doc
