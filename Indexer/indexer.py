@@ -230,7 +230,7 @@ class Indexer:
                 results.sort(key=lambda row: row[1], reverse=True)
 
             case SearchType.PROBABILITY:
-                query = [term for term in self.processor.process_text(query.lower()) if term in self.dictionary]
+                query = self.processor.process_text(query.lower())
                 k, b = kwargs["matching_params"]["K"], kwargs["matching_params"]["B"]
 
                 freq_by_doc = self.get_freq_by_doc()
