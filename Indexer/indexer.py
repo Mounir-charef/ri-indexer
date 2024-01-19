@@ -10,6 +10,7 @@ from Indexer.processor import (
     Tokenizer,
     Stemmer,
 )
+from functools import lru_cache
 
 
 class Indexer:
@@ -30,8 +31,8 @@ class Indexer:
         self.judgements_path = judgements_path
         self.queries_path = queries_path
 
-    @property
-    def dictionary(self):
+    @lru_cache(maxsize=4)
+    def dictionary(self, *args):
         try:
             with open(self.processor.inverse_file_path, "r") as f:
                 return [line.split()[0] for line in f.readlines()]
@@ -201,7 +202,7 @@ class Indexer:
                 if MatchingType.Scalar == matching_type:
                     query = self.processor.process_text(query.lower())
                 else:
-                    query = {term for term in self.processor.process_text(query.lower()) if term in self.dictionary}
+                    query = {term for term in self.processor.process_text(query.lower()) if term in self.dictionary(self.processor.tokenizer, self.processor.stemmer)}
 
                 total_weight = defaultdict(list)
                 doc_weights = defaultdict(list)
