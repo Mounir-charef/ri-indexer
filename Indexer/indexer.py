@@ -202,7 +202,14 @@ class Indexer:
                 if MatchingType.Scalar == matching_type:
                     query = self.processor.process_text(query.lower())
                 else:
-                    query = {term for term in self.processor.process_text(query.lower()) if term in self.dictionary(self.processor.tokenizer, self.processor.stemmer)}
+                    query = {
+                        term
+                        for term in self.processor.process_text(query.lower())
+                        if term
+                        in self.dictionary(
+                            self.processor.tokenizer, self.processor.stemmer
+                        )
+                    }
 
                 total_weight = defaultdict(list)
                 doc_weights = defaultdict(list)
