@@ -2,7 +2,6 @@ import math
 import re
 from collections import defaultdict
 from pathlib import Path
-
 from Indexer.processor import (
     TextProcessor,
     FileType,
@@ -30,6 +29,13 @@ class Indexer:
         )
         self.judgements_path = judgements_path
         self.queries_path = queries_path
+
+    def dictionary(self):
+        try:
+            with open(self.processor.inverse_file_path, "r") as f:
+                return [line.split()[0] for line in f.readlines()]
+        except FileNotFoundError:
+            return []
 
     @property
     def judgements(self) -> list[list[str]]:
@@ -191,7 +197,7 @@ class Indexer:
                 results.sort(key=lambda row: row[0])
 
             case SearchType.VECTOR:
-                query = set(self.processor.process_text(query.lower()))
+                query = {term for term in self.processor.process_text(query.lower()) if term in self.dictionary}
                 total_weight = defaultdict(list)
                 doc_weights = defaultdict(list)
 
@@ -219,7 +225,7 @@ class Indexer:
                 results.sort(key=lambda row: row[1], reverse=True)
 
             case SearchType.PROBABILITY:
-                query = self.processor.process_text(query.lower())
+                query = [term for term in self.processor.process_text(query.lower()) if term in self.dictionary]
                 k, b = kwargs["matching_params"]["K"], kwargs["matching_params"]["B"]
 
                 freq_by_doc = self.get_freq_by_doc()
