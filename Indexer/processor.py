@@ -13,8 +13,8 @@ from tqdm import tqdm
 
 
 class Tokenizer(Enum):
-    NLTK = "nltk"
     SPLIT = "split"
+    NLTK = "nltk"
 
 
 class Stemmer(Enum):
@@ -251,6 +251,7 @@ class TextProcessor:
             for stemmer in Stemmer:
                 self.set_processor(tokenizer, stemmer)
                 self.tokens = {}
+                self._tokens_by_doc = defaultdict(dict)
                 for doc_number, doc in tqdm(self.docs.items(), desc="Processing docs"):
                     self.add_tokens(self.process_doc(doc, doc_number))
                 for token in self.tokens:

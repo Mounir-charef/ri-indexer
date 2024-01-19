@@ -30,6 +30,7 @@ class Indexer:
         self.judgements_path = judgements_path
         self.queries_path = queries_path
 
+    @property
     def dictionary(self):
         try:
             with open(self.processor.inverse_file_path, "r") as f:
@@ -197,7 +198,11 @@ class Indexer:
                 results.sort(key=lambda row: row[0])
 
             case SearchType.VECTOR:
-                query = {term for term in self.processor.process_text(query.lower()) if term in self.dictionary}
+                if MatchingType.Scalar == matching_type:
+                    query = self.processor.process_text(query.lower())
+                else:
+                    query = {term for term in self.processor.process_text(query.lower()) if term in self.dictionary}
+
                 total_weight = defaultdict(list)
                 doc_weights = defaultdict(list)
 

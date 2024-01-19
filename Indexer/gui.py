@@ -49,7 +49,7 @@ FILTERS_PARAMS = {
         "file_type": FileType.DESCRIPTOR,
         "search_type": SearchType.PROBABILITY,
         "row_labels": ["N°doc", "Relevance"],
-        "matching_params": {"K": 1.5, "B": 0.75},
+        "matching_params": {"K": 2, "B": 0.5},
     },
     "Logic Model": {
         "file_type": FileType.DESCRIPTOR,
