@@ -189,14 +189,14 @@ class Indexer:
                 for doc_number, token, freq, weight in self.file_generator(file_type):
                     if doc_number in query:
                         results.append([doc_number, token, freq, weight])
-                results.sort(key=lambda row: row[0])
+                results.sort(key=lambda row: float(row[-1]), reverse=True)
 
             case SearchType.TERM:
                 query = self.processor.process_text(query.lower())
                 for token, doc_number, freq, weight in self.file_generator(file_type):
                     if token in query:
                         results.append([token, doc_number, freq, weight])
-                results.sort(key=lambda row: row[0])
+                results.sort(key=lambda row: float(row[-1]), reverse=True)
 
             case SearchType.VECTOR:
                 if MatchingType.Scalar == matching_type:
@@ -238,7 +238,7 @@ class Indexer:
                 results.sort(key=lambda row: row[1], reverse=True)
 
             case SearchType.PROBABILITY:
-                query = self.processor.process_text(query.lower())
+                query = set(self.processor.process_text(query.lower()))
                 k, b = kwargs["matching_params"]["K"], kwargs["matching_params"]["B"]
 
                 freq_by_doc = self.get_freq_by_doc()
