@@ -40,7 +40,7 @@ def main():
     indexer = init_indexer()
 
     args = parser.parse_args()
-    if args.reprocess:
+    if args.reprocess or len(list(results_dir.glob("*.txt"))) == 0:
         indexer.processor.process_docs()
     app = QApplication(sys.argv)
     window = MyWindow(indexer)
